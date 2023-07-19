@@ -1,3 +1,4 @@
+
 [submodule "deepxde"]
 	path = deepxde
-	url = https://github.com/lululxvi/deepxde.git
+	url = https://github.com/supercgor/deepxde.git
