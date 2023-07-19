@@ -133,7 +133,10 @@ Edit test_pde.ipynb might help you to understand how to use this project.
 - [ ] Add more PDES
 - [ ] Add more active learning methods
 
-See the [open issues](https://github.com/supercgor/PIAL/issues) for a full list of proposed features (and known issues).
+## TODO
+We can use PIAL_L2norm.ipynb to generate new data and train the network. But no visualization here, and if someone has time, write a function for model.data.TripleCartesianProd, allow it to extract inputs[0][...,0] as aux input.
+
+See the [open issues](https://github.com/matrixing26/Project-RAS/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -191,6 +194,5 @@ Don't forget to give the project a star! Thanks again!
 [Bootstrap-url]: https://getbootstrap.com
 [JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
 [JQuery-url]: https://jquery.com 
-TODO
-Now, we can use PIAL_L2norm.ipynb to generate new data and train the network. But no visualization here, and if someone has time, write a function for model.data.TripleCartesianProd, allow it to extract inputs[0][...,0] as aux input.
+
 
