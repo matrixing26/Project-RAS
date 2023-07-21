@@ -3,7 +3,6 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
-
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
     """
     This function is to embed the dirichlet boundary.
