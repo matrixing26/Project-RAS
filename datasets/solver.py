@@ -92,3 +92,6 @@ def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.
     xt = np.asarray(np.meshgrid(x, t, indexing = "ij")).transpose([1,2,0]) # shape (2, 101, 101)
     
     return xt, u
+
+def advection_diffusion_equation():
+    pass

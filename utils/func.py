@@ -3,6 +3,12 @@ import torch
 from torch import nn, Tensor
 from torch.nn import functional as F
 
+def H1norm(array: np.ndarray):
+    return np.sqrt(np.sum(array**2, axis = 1) + np.sum((np.diff(array) / 0.01) ** 2))
+
+def L2norm(array: np.ndarray):
+    return np.sqrt(np.sum(array**2, axis = 1))
+
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
     """
     This function is to embed the dirichlet boundary.
@@ -27,6 +33,15 @@ def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
     x, t = x_trunk[:, 0], x_trunk[:, 1] # 10201
     scale_factor = ((np.pi * x).sin() * t).unsqueeze(0)
     return scale_factor * (outputs + 1)
+
+def periodic(x_loc: Tensor) -> Tensor:
+    x, t = x_loc[:, 0], x_loc[:, 1]
+    return torch.stack([t,
+                        (2 * torch.pi * x).cos(),
+                        (2 * torch.pi * x).sin(),
+                        (4 * torch.pi * x).cos(),
+                        (4 * torch.pi * x).sin(),
+                        ], dim = -1)
 
 # Adapted from https://github.com/luo3300612/grid_sample1d, support 1D, 2D, 3D grid
 def grid_sample(input: torch.Tensor, 
