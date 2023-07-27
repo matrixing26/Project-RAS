@@ -31,7 +31,8 @@ def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
     """
     x_trunk = inputs[1] # x_trunk.shape = (t, 2)
     x, t = x_trunk[:, 0], x_trunk[:, 1] # 10201
-    scale_factor = ((np.pi * x).sin() * t).unsqueeze(0)
+    # using sine function would have some errors
+    scale_factor = (x * (1 - x) * t).unsqueeze(0)
     return scale_factor * (outputs + 1)
 
 def periodic(x_loc: Tensor) -> Tensor:
