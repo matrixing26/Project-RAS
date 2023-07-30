@@ -17,8 +17,11 @@ def parallel_solver(func_solver: Callable[[], Any], data: List[Any], num_workers
     Returns:
         List[Any]: _description_
     """
-    with Pool(num_workers) as pool:
-        result = pool.map(func_solver, data)
+    if num_workers <= 0:
+        result = list(map(func_solver, data))    
+    else:
+        with Pool(num_workers) as pool:
+            result = pool.map(func_solver, data)
     return result
 
 def GRF_get(length_scale: float, Nx: int = 101) -> np.ndarray:
