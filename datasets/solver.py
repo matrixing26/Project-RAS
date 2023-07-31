@@ -109,8 +109,7 @@ def solve_CVC(xmin: float, xmax: float, tmin: float, tmax: float, v: np.ndarray,
     for i in range(Mt - 1):
         u = body_fn_t(i, u)
     
-    UU = u.T
-    UU = UU[::upsample, ::upsample]
+    UU = u[::upsample, ::upsample]
     
     return x, t, UU
 
