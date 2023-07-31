@@ -9,6 +9,12 @@ def H1norm(array: np.ndarray):
 def L2norm(array: np.ndarray):
     return np.sqrt(np.sum(array**2, axis = 1))
 
+def L2_TO_DATA(test_vxs, train_vxs):
+    test_vxs = test_vxs[:, None, :]
+    dis = test_vxs - train_vxs
+    l22d = np.mean(np.sqrt(np.sum(dis ** 2, axis = 2)), axis = 1)
+    return l22d
+
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
     """
     This function is to embed the dirichlet boundary.
