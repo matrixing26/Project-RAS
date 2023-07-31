@@ -4,7 +4,7 @@ from torch import nn, Tensor
 from torch.nn import functional as F
 
 def H1norm(array: np.ndarray):
-    return np.sqrt(np.sum(array**2, axis = 1) + np.sum((np.diff(array) / 0.01) ** 2))
+    return np.sqrt(np.sum(array**2, axis = 1) + np.sum((np.diff(array) / 0.01) ** 2, axis = 1))
 
 def L2norm(array: np.ndarray):
     return np.sqrt(np.sum(array**2, axis = 1))

@@ -60,6 +60,60 @@ def solve_ADR(xmin: float, xmax: float, tmin: float, tmax: float, k: Callable[[]
         u[1:-1, i + 1] = np.linalg.solve(A, b1 + b2)
     return x, t, u
 
+def solve_CVC(xmin: float, xmax: float, tmin: float, tmax: float, v: np.ndarray, g: Callable[[],Any], f: Callable[[],Any], Nx: int,  Nt: int,  upsample: int = 5) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    # Create grid
+    Mx, Mt = Nx * upsample, Nt * upsample
+    x = np.linspace(xmin, xmax, Nx)
+    t = np.linspace(tmin, tmax, Nt)
+    X = np.linspace(0, xmax, Mx)
+    T = np.linspace(0, tmax, Mt)
+    print(X.shape, v.shape)
+    V = lambda l: np.interp(l, x, v.flatten())
+    h = X[1] - X[0]
+    dt = T[1] - T[0]
+    lam = dt / h
+    
+    # Computer advection velocity
+    v_fn = lambda x: V(x) - V(x).min() + 1.0
+    vn = v_fn(X)
+    
+    # Initialize solution and apply initial & boundary conditions
+    u = np.zeros((Mx, Mt))
+    u[0, :] = g(T)
+    u[:, 0] = f(X)
+    
+    # Compute finite difference operators
+    mid = (vn[:-1] + vn[1:]) / 2
+    k = (1 - mid * lam) / (1 + mid * lam)
+    K = np.eye(Mx - 1, k = 0)
+    K_temp = np.eye(Mx - 1, k = 0)
+    Trans = np.eye(Mx - 1, k = -1)
+    
+    def body_fn_x(i, carry):
+        K, K_temp = carry
+        K_temp = (-k[:, None] * (Trans @ K_temp))
+        K += K_temp
+        return K, K_temp
+    
+    for i in range(Mx - 2):
+        K, K_temp = body_fn_x(i, (K, K_temp))
+    
+    D = np.diag(k) + np.eye(Mx - 1, k=-1)
+    
+    def body_fn_t(i, u):
+        b = np.zeros(Mx - 1)
+        b[0] = g(i * dt) - k[0] * g((i + 1) * dt)
+        u[1:, i + 1] = K @ (D @ u[1:, i] + b)
+        return u
+        
+    for i in range(Mt - 1):
+        u = body_fn_t(i, u)
+    
+    UU = u.T
+    UU = UU[::upsample, ::upsample]
+    
+    return x, t, UU
+
 def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, D: float = 0.01, k: float = 0.01, Nx: int = 101, Nt: int = 101, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
     """
     Solve diffusion reaction equation: `u_t = D * u_xx - v(x) * u_x + k * u` with zero boundary condition.
@@ -93,5 +147,20 @@ def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.
     
     return xt, u
 
+def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: int = 101, Nt: int = 101, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    x, t, u = solve_CVC(xmin = 0, 
+                        xmax = xmax, 
+                        tmin = 0, 
+                        tmax = tmax, 
+                        Nx = Nx, 
+                        Nt = Nt, 
+                        v = v, 
+                        g = lambda t: np.sin(np.pi * t / 2),
+                        f = lambda x: np.sin(np.pi * x))
+    
+    xt = np.asarray(np.meshgrid(x, t, indexing = "ij")).transpose([1,2,0]) # shape (2, 101, 101)
+    return xt, u
+
+#TODO
 def advection_diffusion_equation():
     pass
