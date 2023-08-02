@@ -29,7 +29,7 @@ def GRF_get(length_scale: float, Nx: int = 101) -> np.ndarray:
     vx = space.eval_batch(space.random(1), np.linspace(0, 1, Nx)[:, None])[0]
     return vx
 
-def makeTesting(size: int = 100, length_scale: float = 0.1) -> str:
+def makeTesting_dr(size: int = 100, length_scale: float = 0.1) -> str:
     """
     Generate testing dataset.
 
@@ -53,4 +53,29 @@ def makeTesting(size: int = 100, length_scale: float = 0.1) -> str:
     path = f"datasets/DF_{size}_0.1_101_101.npz"
     np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
     return path
+
+def makeTesting_adv(size: int = 100, length_scale: float = 0.1) -> str:
+    """
+    Generate testing dataset.
+
+    Args:
+        size (int, optional): the number of input function in testing dataset. Defaults to 100.
+        length_scale (float, optional): the length_scale of the testing dataset. Defaults to 0.1.
+
+    Returns:
+        str: the path of the testing dataset.
+    """
     
+    vxs = []
+    uxts = []
+    for i in range(size):
+        print(i, end = " ")
+        vxs.append(GRF_get(0.1))
+        xt, uxt = advection_solver(vxs[-1])
+        uxts.append(uxt)
+    vxs = np.stack(vxs, axis = 0, dtype = np.float32)
+    uxts = np.stack(uxts, axis = 0, dtype = np.float32)
+    print("\n",vxs.shape, uxts.shape, xt.shape)
+    path = f"datasets/ADV_{size}_0.1_101_101.npz"
+    np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
+    return path
