@@ -112,7 +112,7 @@ These codes might help you to install the environment for this project.
     conda create -n pial python=3.10
     conda activate pial
     conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
-    conda install matplotlib numpy scipy scikit-learn jupyter
+    conda install matplotlib numpy scipy scikit-learn jupyter nbconvert
     conda install -c conda-forge scikit-optimize
 
 ```
