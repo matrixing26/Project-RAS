@@ -44,13 +44,13 @@ def makeTesting_dr(size: int = 100, length_scale: float = 0.05) -> str:
     uxts = []
     for i in range(size):
         print(i, end = " ")
-        vxs.append(GRF_get(0.1))
+        vxs.append(GRF_get(length_scale))
         xt, uxt = diffusion_reaction_solver(vxs[-1])
         uxts.append(uxt)
     vxs = np.stack(vxs, axis = 0, dtype = np.float32)
     uxts = np.stack(uxts, axis = 0, dtype = np.float32)
     print("\n",vxs.shape, uxts.shape, xt.shape)
-    path = f"datasets/DF_{size}_0.05_101_101.npz"
+    path = f"datasets/DF_{size}_{length_scale:.2f}_101_101.npz"
     np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
     return path
 
