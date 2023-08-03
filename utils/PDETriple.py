@@ -159,3 +159,11 @@ def is_y(func: Callable[[Any], Any]) -> bool:
         return True
     else:
         return False
+
+class boundary():
+    def __init__(self, loss_coeff = 1, value = 0):
+        self.loss_coeff = loss_coeff
+        self.value = value
+    
+    def __call__(self, targets, outputs):
+        return self.loss_coeff * (outputs - self.value).abs().mean()

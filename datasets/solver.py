@@ -67,7 +67,7 @@ def solve_CVC(xmin: float, xmax: float, tmin: float, tmax: float, v: np.ndarray,
     t = np.linspace(tmin, tmax, Nt)
     X = np.linspace(0, xmax, Mx)
     T = np.linspace(0, tmax, Mt)
-    print(X.shape, v.shape)
+    # print(X.shape, v.shape)
     V = lambda l: np.interp(l, x, v.flatten())
     h = X[1] - X[0]
     dt = T[1] - T[0]

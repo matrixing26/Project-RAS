@@ -70,7 +70,7 @@ def makeTesting_adv(size: int = 100, length_scale: float = 0.05) -> str:
     uxts = []
     for i in range(size):
         print(i, end = " ")
-        vxs.append(GRF_get(0.1))
+        vxs.append(GRF_get(length_scale))
         xt, uxt = advection_solver(vxs[-1])
         uxts.append(uxt)
     vxs = np.stack(vxs, axis = 0, dtype = np.float32)

@@ -27,3 +27,9 @@ def burgers_equation(x: Tuple[Tensor, Tensor], y: Tensor, aux: Tensor, v = 0.01)
     dy_xx = dde.grad.hessian(y, x[1], j=0)
     out = dy_t + y * dy_x - v * dy_xx
     return out
+
+def advection_equation(x: Tuple[Tensor, Tensor], y: Tensor, aux: Tensor) -> Tensor:
+    dy_t = dde.grad.jacobian(y, x[1], j=1)
+    dy_x = dde.grad.jacobian(y, x[1], j=0)
+    out = dy_t - aux * dy_x
+    return out
