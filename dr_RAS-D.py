@@ -36,7 +36,7 @@ batch_end = lambda n: n
 
 decay_start = None
 decay_middle = None
-decay_end = None
+decay_end = ("inverse time", 5000, 0.4)
 
 if False:
     makeTesting_dr(length_scale = ls)

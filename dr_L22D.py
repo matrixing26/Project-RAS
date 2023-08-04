@@ -32,7 +32,7 @@ iter_end = 60000
 
 batch_start = lambda n: n // 5
 batch_middle = lambda n: n // 5
-batch_end = lambda n: n
+decay_end = ("inverse time", 5000, 0.4)
 
 decay_start = None
 decay_middle = None
