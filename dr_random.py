@@ -117,7 +117,7 @@ losshistory, train_state = model.train(iterations = iter_start, batch_size = bat
 dde.utils.plot_loss_history(losshistory)
 
 # %%
-losshistory.to_pandas().to_csv(f"results/loss_history_{date}_ct2.csv", index=False)
+losshistory.to_pandas().to_csv(f"results/loss_history_{date}_random.csv", index=False)
 
 fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(15,5))
 
@@ -182,11 +182,11 @@ while len(train_vxs) < total_training_vx:
 
     losshistory, train_state = model.train(iterations=iterations, batch_size = batchsize)
     pd_frame = losshistory.to_pandas()
-    pd_frame = pd.concat([pd.read_csv(f"results/loss_history_{date}_ct2.csv"), pd_frame], axis = 0, ignore_index=True)
-    pd_frame.to_csv(f"results/loss_history_{date}_ct2.csv", index=False)
+    pd_frame = pd.concat([pd.read_csv(f"results/loss_history_{date}_random.csv"), pd_frame], axis = 0, ignore_index=True)
+    pd_frame.to_csv(f"results/loss_history_{date}_random.csv", index=False)
     dde.utils.plot_loss_history(losshistory)
     plt.show()
 
-torch.save(model.state_dict(), f"results/model_{date}_ct2.pth")
+torch.save(model.state_dict(), f"results/model_{date}_random.pth")
 
 
