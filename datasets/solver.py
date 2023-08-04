@@ -68,14 +68,12 @@ def solve_CVC(xmin: float, xmax: float, tmin: float, tmax: float, v: np.ndarray,
     X = np.linspace(0, xmax, Mx)
     T = np.linspace(0, tmax, Mt)
     # print(X.shape, v.shape)
-    V = lambda l: np.interp(l, x, v.flatten())
     h = X[1] - X[0]
     dt = T[1] - T[0]
     lam = dt / h
     
     # Computer advection velocity
-    v_fn = lambda x: V(x) - V(x).min() + 1.0
-    vn = v_fn(X)
+    vn = np.interp(X, x, v.flatten())
     
     # Initialize solution and apply initial & boundary conditions
     u = np.zeros((Mx, Mt))

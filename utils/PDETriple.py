@@ -1,4 +1,5 @@
 import numpy as np
+import deepxde.deepxde as dde
 from deepxde.deepxde import Model
 from deepxde.deepxde.data import Data
 from deepxde.deepxde.data.sampler import BatchSampler
