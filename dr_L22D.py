@@ -17,6 +17,7 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 total_training_vx = 300
 ls = 0.05
 
+start_num = 100
 check_num = 1000
 select_num = 20
 solver_worker = 0
@@ -25,11 +26,11 @@ lr_start = 5e-3
 lr_middle = 5e-3
 lr_end = 5e-3
 
-iter_start = 20000
+iter_start = 40000
 iter_middle = 40000
 iter_end = 60000
 
-batch_start = lambda n: 2
+batch_start = lambda n: n // 5
 batch_middle = lambda n: n // 5
 batch_end = lambda n: n
 
@@ -63,7 +64,7 @@ space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="cubic")
 geom = dde.geometry.Interval(0, 1)
 timedomain = dde.geometry.TimeDomain(0, 1)
 geomtime = dde.geometry.GeometryXTime(geom, timedomain)
-vxs = space.eval_batch(space.random(select_num), np.linspace(0, 1, 101)[:, None])
+vxs = space.eval_batch(space.random(start_num), np.linspace(0, 1, 101)[:, None])
 uxts = parallel_solver(diffusion_reaction_solver, vxs, num_workers = solver_worker)
 grid = uxts[0][0].reshape(101 * 101, -1)
 uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
@@ -159,6 +160,7 @@ while len(train_vxs) < total_training_vx:
     a, _, c = testing_new_data.train_next_batch()
     l2 = L2_TO_DATA(a[0], train_vxs)
     print(np.mean(l2), np.std(l2))
+    select_num = min(select_num, total_training_vx - len(train_vxs))
     topk_index = np.argpartition(l2, -select_num)[-select_num:] # select the top 20 vxs
     topk_vxs = a[0][topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = solver_worker)
