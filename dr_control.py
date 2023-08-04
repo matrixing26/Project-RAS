@@ -19,15 +19,15 @@ ls = 0.05
 
 start_num = 100
 check_num = 1000
-select_num = 20
+select_num = 30
 solver_worker = 0
 
 lr_start = 5e-3
 lr_middle = 5e-3
-lr_end = 5e-3
+lr_end = 1e-3
 
 iter_start = 40000
-iter_middle = 40000
+iter_middle = 20000
 iter_end = 60000
 
 batch_start = lambda n: n // 5
