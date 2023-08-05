@@ -145,6 +145,7 @@ def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.
     return xt, u
 
 def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: int = 101, Nt: int = 101, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    print(".", end = "")
     x, t, u = solve_CVC(xmin = 0, 
                         xmax = xmax, 
                         tmin = 0, 

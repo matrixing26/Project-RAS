@@ -123,7 +123,8 @@ class GRF_pos(dde.data.function_spaces.FunctionSpace):
     def random(self, size):
         u = np.random.randn(self.N, size)
         fea = np.dot(self.L, u).T
-        fea = fea - fea.min(axis=0, keepdims=True) + 0.5
+        print(fea.shape)
+        fea = fea - fea.min(axis=1, keepdims=True) + 0.5
         return fea
 
     def eval_one(self, feature, x):
