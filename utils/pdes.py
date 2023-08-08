@@ -31,5 +31,5 @@ def burgers_equation(x: Tuple[Tensor, Tensor], y: Tensor, aux: Tensor, v = 0.01)
 def advection_equation(x: Tuple[Tensor, Tensor], y: Tensor, aux: Tensor) -> Tensor:
     dy_t = dde.grad.jacobian(y, x[1], j=1)
     dy_x = dde.grad.jacobian(y, x[1], j=0)
-    out = dy_t - aux * dy_x
+    out = dy_t + aux * dy_x
     return out

@@ -1,5 +1,10 @@
+import torch
 import numpy as np
+import time
 from typing import Callable, Tuple, Union, List, Any
+from torch import nn, Tensor
+from torch.nn import functional as F
+from numpy.typing import ArrayLike
 
 def solve_ADR(xmin: float, xmax: float, tmin: float, tmax: float, k: Callable[[],Any], v: Callable[[],Any], g: Callable[[],Any], dg: Callable[[],Any], f: Callable[[],Any], u0: Callable[[],Any], Nx: int,  Nt: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
@@ -60,56 +65,62 @@ def solve_ADR(xmin: float, xmax: float, tmin: float, tmax: float, k: Callable[[]
         u[1:-1, i + 1] = np.linalg.solve(A, b1 + b2)
     return x, t, u
 
-def solve_CVC(xmin: float, xmax: float, tmin: float, tmax: float, v: np.ndarray, g: Callable[[],Any], f: Callable[[],Any], Nx: int,  Nt: int,  upsample: int = 5) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    # Create grid
-    Mx, Mt = Nx * upsample, Nt * upsample
-    x = np.linspace(xmin, xmax, Nx)
-    t = np.linspace(tmin, tmax, Nt)
-    X = np.linspace(0, xmax, Mx)
-    T = np.linspace(0, tmax, Mt)
-    # print(X.shape, v.shape)
-    h = X[1] - X[0]
-    dt = T[1] - T[0]
-    lam = dt / h
+class CVCSolver(nn.Module):
+    def __init__(self, xmin: float = 0, xmax: float = 1, tmin: float = 0, tmax: float = 1, Nx: int = 101, Nt: int = 101, upsample: int = 5):
+        super().__init__()
+        self.xmin = xmin
+        self.xmax = xmax
+        self.tmin = tmin
+        self.tmax = tmax
+        self.Nx = Nx
+        self.Nt = Nt
+        self.upsample = upsample
+        self.Mx = (Nx - 1) * upsample + 1
+        self.Mt = (Nt - 1) * upsample + 1
+        self.register_buffer("xgrid", torch.linspace(xmin, xmax, Nx))
+        self.register_buffer("tgrid", torch.linspace(tmin, tmax, Nt))
+        self.register_buffer("Xgrid", torch.linspace(xmin, xmax, self.Mx))
+        self.register_buffer("Tgrid", torch.linspace(tmin, tmax, self.Mt))
+        self.register_buffer("offdiag", torch.ones(self.Mx - 2).diag(-1))
+        self.dx = self.Xgrid[1] - self.Xgrid[0]
+        self.dt = self.Tgrid[1] - self.Tgrid[0]
+        self.lam = self.dt / self.dx
+        self.register_buffer("tk", torch.ones((self.Mx - 1,self.Mx - 1)).tril().unsqueeze(0))
     
-    # Computer advection velocity
-    vn = np.interp(X, x, v.flatten())
-    
-    # Initialize solution and apply initial & boundary conditions
-    u = np.zeros((Mx, Mt))
-    u[0, :] = g(T)
-    u[:, 0] = f(X)
-    
-    # Compute finite difference operators
-    mid = (vn[:-1] + vn[1:]) / 2
-    k = (1 - mid * lam) / (1 + mid * lam)
-    K = np.eye(Mx - 1, k = 0)
-    K_temp = np.eye(Mx - 1, k = 0)
-    Trans = np.eye(Mx - 1, k = -1)
-    
-    def body_fn_x(i, carry):
-        K, K_temp = carry
-        K_temp = (-k[:, None] * (Trans @ K_temp))
-        K += K_temp
-        return K, K_temp
-    
-    for i in range(Mx - 2):
-        K, K_temp = body_fn_x(i, (K, K_temp))
-    
-    D = np.diag(k) + np.eye(Mx - 1, k=-1)
-    
-    def body_fn_t(i, u):
-        b = np.zeros(Mx - 1)
-        b[0] = g(i * dt) - k[0] * g((i + 1) * dt)
-        u[1:, i + 1] = K @ (D @ u[1:, i] + b)
-        return u
+    @torch.no_grad()
+    def forward(self, vxs: ArrayLike, g: Callable[[Tensor], Tensor] = lambda t: (t * torch.pi / 2).sin(), f: Callable[[Tensor], Tensor] = lambda x: (x * torch.pi).sin()):
+        """
+        _summary_
+
+        Args:
+            vxs (ArrayLike): should be a batched array of shape B, N
+            g (_type_, optional): _description_. Defaults to lambdat:(t * torch.pi).sin().
+            f (_type_, optional): _description_. Defaults to lambdax:(x * torch.pi / 2).sin().
+        """
+        vxs = torch.as_tensor(vxs, dtype = self.Xgrid.dtype, device = self.Xgrid.device)
+        vxs = interp_nd(vxs, self.Xgrid[:, None] * 2 - 1, mode = "linear")
+        u = torch.empty(vxs.shape[0], self.Mx, self.Mt, dtype = self.Xgrid.dtype, device = self.Xgrid.device)
+        u[:, 0] = g(self.Tgrid).unsqueeze(0).expand(u.shape[0], -1)
+        u[:, :, 0] = f(self.Xgrid).unsqueeze(0).expand(u.shape[0], -1)
         
-    for i in range(Mt - 1):
-        u = body_fn_t(i, u)
-    
-    UU = u[::upsample, ::upsample]
-    
-    return x, t, UU
+        mid = (vxs[:, :-1] + vxs[:, 1:]) / 2
+        k = (1 - mid * self.lam) / (1 + mid * self.lam)
+        
+        t_K = self.tk.repeat(k.shape[0], 1, 1)
+        _ = [t_K[:, i:, :i].mul_(-k[:, (i,), None]) for i in range(1, k.shape[1])]
+        t_B = u[:, 0, :-1] - u[:, 0, 1:] * k[:, (0,)]
+        t_D = torch.diag_embed(k) + self.offdiag.unsqueeze(0)
+        # print(t_K.shape, t_D.shape, t_B.shape)
+        viu = u[:, 1:]
+        for i in range(0, self.Mt - 1):
+            buf = torch.einsum("bik,bk->bi", t_D, viu[:, :, i])
+            buf[:, 0] += t_B[:, i]
+            buf = torch.einsum("bik,bk->bi", t_K, buf)
+            viu[:, :, i + 1] = buf
+        
+        x = self.xgrid.cpu().numpy()
+        t = self.tgrid.cpu().numpy()
+        return x, t, u[:, ::self.upsample, ::self.upsample].cpu().numpy()
 
 def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, D: float = 0.01, k: float = 0.01, Nx: int = 101, Nt: int = 101, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -144,17 +155,21 @@ def diffusion_reaction_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.
     
     return xt, u
 
-def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: int = 101, Nt: int = 101, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
-    print(".", end = "")
-    x, t, u = solve_CVC(xmin = 0, 
-                        xmax = xmax, 
-                        tmin = 0, 
-                        tmax = tmax, 
-                        Nx = Nx, 
-                        Nt = Nt, 
-                        v = v, 
-                        g = lambda t: np.sin(np.pi * t / 2),
-                        f = lambda x: np.sin(np.pi * x))
+def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: int = 101, Nt: int = 101, cuda = True, batchsize: int = 100, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    solver = CVCSolver(xmin = 0, xmax = xmax, tmin = 0, tmax = tmax, Nx = Nx, Nt = Nt, *args, **kwargs)
+    if cuda:
+        solver = solver.cuda()
+    
+    if batchsize is not None:
+        split_num = int(np.ceil(v.shape[0] / batchsize))
+        vs = np.array_split(v, split_num)
+        us  = []
+        for v in vs:
+            x, t, u = solver(v)
+            us.append(u)
+        u = np.concatenate(us, axis = 0)
+    else:
+        x, t, u = solver(v)
     
     xt = np.asarray(np.meshgrid(x, t, indexing = "ij")).transpose([1,2,0]) # shape (2, 101, 101)
     return xt, u
@@ -162,3 +177,69 @@ def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: in
 #TODO
 def advection_diffusion_equation():
     pass
+
+# -------------------------- nd grid sample --------------------------
+# Adapted from https://github.com/luo3300612/grid_sample1d, support 1D, 2D, 3D grid
+def grid_sample(input: Tensor, 
+                grid: Tensor, 
+                mode:str = "bilinear", 
+                padding_mode:str = "zeros", 
+                align_corners: bool | None = None
+                ) -> Tensor:
+    if grid.shape[-1] == 1:
+        assert mode in ["nearest", "linear"], "1D grid only support nearest and linear mode"
+        input = input.unsqueeze(-1)
+        grid = grid.unsqueeze(1)
+        grid = torch.cat([-torch.ones_like(grid), grid], dim=-1)
+        out_shape = [grid.shape[0], input.shape[1], grid.shape[2]]
+        return F.grid_sample(input, grid, 
+                             mode= "bilinear" if mode == "linear" else mode, 
+                             padding_mode=padding_mode, 
+                             align_corners=align_corners).view(*out_shape)
+    else:
+        return F.grid_sample(input, grid, mode=mode, padding_mode=padding_mode, align_corners=align_corners)
+
+def interp_nd(grid: Tensor, 
+              points: Tensor, 
+              mode: str = "linear", 
+              align_corners: bool = True, 
+              padding_mode: str = "border"
+              ) -> Tensor:
+    """
+    Using torch to do interpolation. Support 1D, 2D, 3D grid. And for grid inputs, points can be unbatched or batched, but for unbatched grid inputs, points must be unbatched.
+
+    Args:
+        grid (torch.Tensor): the input function, shape `B, (C,) D, (H,) (W,)` for batched input, `(C,) D, (H,) (W,)` for unbatched input, channel dimension is optional.
+        points (torch.Tensor): `B, N, dim` for batched input, `N, dim` for unbatched input. the points should be in the range of `[-1, 1]`.
+        mode (str, optional): the mode for interpolation. Defaults to "linear".
+
+    Returns:
+        torch.Tensor: shape `(B,) (C,) N
+    """
+    interp_dim = points.shape[-1]
+    is_point_batched = points.dim() == 3
+    is_grid_batched = grid.dim() > interp_dim
+    is_channelled = grid.dim() -1 == is_grid_batched + interp_dim
+    
+    if not is_channelled:
+        grid = grid.unsqueeze(int(is_grid_batched))
+        
+    if not is_grid_batched:
+        grid = grid.unsqueeze(0)
+    if not is_point_batched:
+        points = points.unsqueeze(0).expand(grid.shape[0], -1, -1)
+    
+    for _ in range(interp_dim - 1):
+        points = points.unsqueeze(-2)
+    
+    grid = grid_sample(grid, points, mode=mode, padding_mode=padding_mode, align_corners=align_corners)
+    for _ in range(interp_dim - 1):
+        grid = grid.squeeze(-1)
+    
+    if not is_grid_batched:
+        grid = grid.squeeze(0)
+    
+    if not is_channelled:
+        grid = grid.squeeze(int(is_grid_batched))
+    
+    return grid
