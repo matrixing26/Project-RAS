@@ -233,7 +233,7 @@ def advection_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, Nx: in
     return xt, u
 
 def burger_solver(v: np.ndarray, xmax: float = 1.0, tmax: float = 1.0, nu = 0.1, Nx = 101, Nt = 101, cuda = True, batchsize: int = 100, *args, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
-    solver = BurgersSolver(xmax = xmax, tmax = tmax, nu= nu, nx = Nx, nt = Nt, *args, **kwargs)
+    solver = BurgersSolver(xmax = xmax, tmax = tmax, nu= nu, nx = Nx, nt = Nt, upsample = (2, 200),*args, **kwargs)
     if cuda:
         solver = solver.cuda()
     else:
