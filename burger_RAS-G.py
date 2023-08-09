@@ -26,9 +26,9 @@ lr_start = 1e-3
 lr_middle = 1e-3
 lr_end = 1e-3
 
-iter_start = 10000
-iter_middle = 10000
-iter_end = 10000
+iter_start = 50000
+iter_middle = 50000
+iter_end = 50000
 
 batch_start = lambda n: n // 5
 batch_middle = lambda n: n // 5
