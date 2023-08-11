@@ -142,7 +142,7 @@ def dirichlet(inputs, outputs):
     with torch.no_grad():
         vxs = interp_nd(vxs, xt[...,(0,)] * 2 - 1)
     t = xt[None, ...,1]
-    return 2 * outputs * t + vxs
+    return 2 * outputs * t + vxs * (1 - t)
 
 data = PDETripleCartesianProd(X_train=(train_vxs, train_grid), y_train=train_uxts, X_test=(test_vxs, test_grid), y_test=test_uxts, boundary = [])
 
