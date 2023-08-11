@@ -138,6 +138,7 @@ print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 # %%
 def dirichlet(inputs, outputs):
+    return outputs
     vxs, xt = inputs
     with torch.no_grad():
         vxs = interp_nd(vxs, xt[...,(0,)] * 2 - 1)

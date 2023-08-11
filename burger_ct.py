@@ -14,13 +14,13 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 # dde.config.set_random_seed(2023)
 
 # %%
-total_training_vx = 300
-ls = 0.6
+total_training_vx = 1000
+ls = 1.0
 testing_path = f"datasets/BUR_100_{ls:.2f}_101_101.npz"
 
-start_num = 100
-check_num = 1000
-select_num = 30
+start_num = 500
+check_num = 2000
+select_num = 50
 
 lr_start = 1e-3
 lr_middle = 1e-3
@@ -138,6 +138,7 @@ print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 # %%
 def dirichlet(inputs, outputs):
+    return outputs
     vxs, xt = inputs
     with torch.no_grad():
         vxs = interp_nd(vxs, xt[...,(0,)] * 2 - 1)
