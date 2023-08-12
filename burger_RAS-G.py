@@ -18,9 +18,9 @@ total_training_vx = 1000
 ls = 1.0
 testing_path = f"datasets/BUR_100_{ls:.2f}_101_101.npz"
 
-start_num = 500
+start_num = 100
 check_num = 2000
-select_num = 50
+select_num = 100
 
 lr_start = 1e-3
 lr_middle = 1e-3
