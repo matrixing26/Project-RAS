@@ -154,7 +154,8 @@ while len(train_vxs) < total_num:
     # generate some vxs to test
     pde_data = dde.data.TimePDE(geomtime, pde, [], num_domain = 20000)
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 20, [0])
+    select_num = min(20, total_num - len(train_vxs))
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, select_num, [0])
     # testing_model = dde.Model(testing_new_data, net)
     a, _, c = testing_new_data.train_next_batch()
     topk_vxs = a[0]
