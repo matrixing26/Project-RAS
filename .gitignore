@@ -1,5 +1,6 @@
 *.npz
 results/*
+datasets/DF/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
