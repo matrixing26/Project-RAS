@@ -154,10 +154,18 @@ while len(train_vxs) < total_num:
     # generate some vxs to test
     pde_data = dde.data.TimePDE(geomtime, pde, [], num_domain = 20000)
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 20, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 400, [0])
     # testing_model = dde.Model(testing_new_data, net)
     a, _, c = testing_new_data.train_next_batch()
-    topk_vxs = a[0]
+    out = model.predict(a, aux_vars = c, operator = pde, grad_for_each=True)
+    res = np.mean(np.abs(out), axis = 1)
+    
+    print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
+    
+    select_num = min(20, total_num - len(train_vxs))
+    topk_index = np.argpartition(res, -select_num)[-select_num:] # select the top 20 vxs
+    # print(res, topk_index, res[topk_index])
+    topk_vxs = a[0][topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
@@ -179,14 +187,14 @@ while len(train_vxs) < total_num:
     
     pd_frame = losshistory.to_pandas()
     os.makedirs("results/DF", exist_ok=True)
-    if os.path.exists(f"results/DF/loss_history_{date}_ct.csv"):
-        pd_frame = pd.concat([pd.read_csv(f"results/DF/loss_history_{date}_ct.csv"), pd_frame], axis = 0, ignore_index=True)
-    pd_frame.to_csv(f"results/DF/loss_history_{date}_ct.csv", index=False)
+    if os.path.exists(f"results/DF/loss_history_{date}_rasg.csv"):
+        pd_frame = pd.concat([pd.read_csv(f"results/DF/loss_history_{date}_rasg.csv"), pd_frame], axis = 0, ignore_index=True)
+    pd_frame.to_csv(f"results/DF/loss_history_{date}_rasg.csv", index=False)
     dde.utils.plot_loss_history(losshistory)
     plt.show()
     plot_train(0)
     plot_test(0)
     
-torch.save(model.state_dict(), f"results/DF/model_{date}_ct.pth")
+torch.save(model.state_dict(), f"results/DF/model_{date}_rasg.pth")
 
 

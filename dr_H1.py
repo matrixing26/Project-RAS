@@ -159,7 +159,7 @@ while len(train_vxs) < total_num:
     a, _, c = testing_new_data.train_next_batch()
     h1 = H1norm(a[0])
     print(f"H1 values: {h1.mean():.2e}, Std: {h1.std():.2e}")
-    select_num = min(30, total_num - len(train_vxs))
+    select_num = min(20, total_num - len(train_vxs))
     topk_index = np.argpartition(h1, -select_num)[-select_num:] # select the top 20 vxs
     topk_vxs = a[0][topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)

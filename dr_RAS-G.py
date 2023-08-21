@@ -162,7 +162,7 @@ while len(train_vxs) < total_num:
     
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    select_num = min(30, total_num - len(train_vxs))
+    select_num = min(20, total_num - len(train_vxs))
     topk_index = np.argpartition(res, -select_num)[-select_num:] # select the top 20 vxs
     # print(res, topk_index, res[topk_index])
     topk_vxs = a[0][topk_index]
