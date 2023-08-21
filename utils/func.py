@@ -50,6 +50,9 @@ def periodic(x_loc: Tensor) -> Tensor:
                         (4 * torch.pi * x).sin(),
                         ], dim = -1)
 
+def arg_topk(array: np.ndarray, k: int):
+    return np.argpartition(array, -k)[-k:]
+
 # Adapted from https://github.com/luo3300612/grid_sample1d, support 1D, 2D, 3D grid
 def grid_sample(input: torch.Tensor, 
                 grid: torch.Tensor, 

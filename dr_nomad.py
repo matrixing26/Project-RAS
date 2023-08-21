@@ -151,7 +151,7 @@ print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 data = dde.data.Triple(X_train=(train_vxs, train_grid), y_train=train_uxts, X_test=(test_vxs, test_grid), y_test=test_uxts)
 
 # Net
-net = Nomad([101, 100, 100], [102, 100, 100, 100, 1])
+net = Nomad([101, 100, 100], [102, 100, 100, 1])
 #net = dde.nn.pytorch.DeepONet([101, 100, 100], [2, 100, 100, 100], "gelu", "Glorot normal")
 net.apply_output_transform(dirichlet)
 
