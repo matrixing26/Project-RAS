@@ -1,10 +1,12 @@
 # %%
-import torch
+import deepxde.deepxde as dde
+import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
-import deepxde.deepxde as dde
+import torch
+
 from datasets import parallel_solver, diffusion_reaction_solver
 from utils.func import dirichlet
 from utils.PDETriple import PDETripleCartesianProd
@@ -184,7 +186,9 @@ while len(train_vxs) < total_num:
     losshistory, train_state = model.train(iterations=iters, batch_size = batchsize)
     
     pd_frame = losshistory.to_pandas()
-    pd_frame = pd.concat([pd.read_csv(f"results/DF/loss_history_{date}_rasg.csv"), pd_frame], axis = 0, ignore_index=True)
+    os.makedirs("results/DF", exist_ok=True)
+    if os.path.exists(f"results/DF/loss_history_{date}_rasg.csv"):
+        pd_frame = pd.concat([pd.read_csv(f"results/DF/loss_history_{date}_rasg.csv"), pd_frame], axis = 0, ignore_index=True)
     pd_frame.to_csv(f"results/DF/loss_history_{date}_rasg.csv", index=False)
     dde.utils.plot_loss_history(losshistory)
     plt.show()
