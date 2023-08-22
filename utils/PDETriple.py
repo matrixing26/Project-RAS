@@ -5,7 +5,7 @@ from deepxde.deepxde.data import Data
 from deepxde.deepxde.data.sampler import BatchSampler
 import deepxde.deepxde.backend as bkd
 from torch import Tensor
-from typing import Callable, List, Tuple, Union, Optional, Any
+from typing import Callable, List, Tuple, Union, Optional, Any, Literal
 import inspect
 
 class PDETripleCartesianProd(Data):
@@ -140,7 +140,100 @@ class PDETripleCartesianProd(Data):
 
     def test(self):
         return self.test_x, self.test_y
+
+class PDETriple(Data):
+    def __init__(self, 
+                 X_train: Tuple[np.ndarray, np.ndarray] = ..., 
+                 y_train: Union[np.ndarray, None] = None, 
+                 X_test: Tuple[np.ndarray, np.ndarray] = ..., 
+                 y_test: Union[np.ndarray, None] = None, 
+                 boundary: List[Tuple[Tuple[int], Callable[[Any], Any]]] = [],
+                 data_format: Literal["CartesianProd", "Normal"] = "CartesianProd"):
+        if data_format == "CartesianProd":
+            X_train, y_train = self.from_CartesianProd(X_train, y_train)
+            X_test, y_test = self.from_CartesianProd(X_test, y_test)
+        self.train_x = X_train
+        self.train_y = y_train
+        self.test_x = X_test
+        self.test_y = y_test
+        self.boundary = boundary
     
+        self.train_sampler = BatchSampler(len(self.train_y), shuffle=True)
+
+    def losses(self, targets, outputs, loss_fn, inputs, model, aux=None):
+        if not isinstance(loss_fn, list):
+            loss_fn = [loss_fn]
+            
+        fn_losses = []
+        for fn in loss_fn:
+            losses = []
+            if is_mix(fn):
+                if is_y(fn):
+                    losses.append(fn(inputs = inputs, y_pred = outputs, y_true = targets))
+                else:
+                    losses.append(fn(inputs = inputs, targets = targets, outputs = outputs))
+            elif is_pinn(fn):
+                if is_y(fn):
+                    losses.append(fn(inputs = inputs, y_pred = outputs))
+                else:
+                    losses.append(fn(inputs = inputs, outputs = outputs))
+            elif is_data(fn):
+                if is_y(fn):
+                    losses.append(fn(y_pred = outputs, y_true = targets))
+                else:
+                    losses.append(fn(targets = targets, outputs = outputs))
+            else:
+                raise ValueError("The loss function is not valid. The loss function must be a PINN(inputs, outputs), a Data(outputs, targets), or a Mix(inputs, outputs, targets).")
+            # Use stack instead of as_tensor to keep the gradients.
+            losses = bkd.reduce_mean(bkd.stack(losses, 0))
+            fn_losses.append(losses)
+
+        for (indices, fn) in self.boundary:
+            losses = []
+            inputs = (inputs[0][indices], inputs[1][indices])
+            outputs = outputs[indices] if outputs is not None else None
+            targets = targets[indices] if targets is not None else None
+            if is_mix(fn):
+                if is_y(fn):
+                    losses.append(fn(inputs = inputs, y_pred = outputs, y_true = targets))
+                else:
+                    losses.append(fn(inputs = inputs, targets = targets, outputs = outputs))
+            elif is_pinn(fn):
+                if is_y(fn):
+                    losses.append(fn(inputs = inputs, y_pred = outputs))
+                else:
+                    losses.append(fn(inputs = inputs, outputs = outputs))
+            elif is_data(fn):
+                if is_y(fn):
+                    losses.append(fn(y_pred = outputs, y_true = targets))
+                else:
+                    losses.append(fn(targets = targets, outputs = outputs))
+            else:
+                raise ValueError("The loss function is not valid. The loss function must be a PINN(inputs, outputs), a Data(outputs, targets), or a Mix(inputs, outputs, targets).")
+            # Use stack instead of as_tensor to keep the gradients.
+            losses = bkd.reduce_mean(bkd.stack(losses, 0))
+            fn_losses.append(losses)
+            
+        return fn_losses
+
+    def train_next_batch(self, batch_size=None):
+        if batch_size is None:
+            return self.train_x, self.train_y
+        indices = self.train_sampler.get_next(batch_size)
+        inps, grid = self.train_x[0][indices], self.train_x[1][indices]
+        tgts = self.train_y[indices] if self.train_y is not None else None
+        return (inps, grid), tgts
+
+    def test(self):
+        return self.test_x, self.test_y
+    
+    @staticmethod
+    def from_CartesianProd(X: tuple[np.ndarray, np.ndarray], y: np.ndarray):
+        X = (np.repeat(X[0], len(X[1]), axis = 0), np.tile(X[1], (len(X[0]), 1)))
+        y = y.reshape(-1, 1)
+        return X, y
+            
+
 def is_pinn(func: Callable[[Any], Any]) -> bool:
     func_sig = inspect.signature(func).parameters
     if ("inputs" in func_sig) and ("outputs" in func_sig or "y_pred" in func_sig):
