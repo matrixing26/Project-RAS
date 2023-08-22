@@ -22,7 +22,12 @@ class PDETripleCartesianProd(Data):
         y_train: A NumPy array of shape (`N1`, `N2`).
     """
 
-    def __init__(self, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, boundary: List[Tuple[Tuple[int], Callable[[Any], Any]]] = []):
+    def __init__(self, 
+                 X_train: Tuple[np.ndarray, np.ndarray] = ..., 
+                 y_train: Union[np.ndarray, None] = None, 
+                 X_test: Tuple[np.ndarray, np.ndarray] = ..., 
+                 y_test: Union[np.ndarray, None] = None, 
+                 boundary: List[Tuple[Tuple[int], Callable[[Any], Any]]] = []):
         """
         _summary_
 
@@ -37,10 +42,10 @@ class PDETripleCartesianProd(Data):
             ValueError: _description_
             ValueError: _description_
         """
-        if len(X_train[0]) * len(X_train[1]) != y_train.size:
-            raise ValueError("The training dataset does not have the format of Cartesian product.")
-        if len(X_test[0]) * len(X_test[1]) != y_test.size:
-            raise ValueError("The testing dataset does not have the format of Cartesian product.")
+        # if len(X_train[0]) * len(X_train[1]) != y_train.size:
+        #     raise ValueError("The training dataset does not have the format of Cartesian product.")
+        # if len(X_test[0]) * len(X_test[1]) != y_test.size:
+        #     raise ValueError("The testing dataset does not have the format of Cartesian product.")
         
         self.train_x, self.train_y = X_train, y_train
         self.test_x, self.test_y = X_test, y_test
@@ -123,13 +128,15 @@ class PDETripleCartesianProd(Data):
             return self.train_x, self.train_y
         if not isinstance(batch_size, (tuple, list)):
             indices = self.branch_sampler.get_next(batch_size)
-            return (self.train_x[0][indices], self.train_x[1]), self.train_y[indices]
-        indices_branch = self.branch_sampler.get_next(batch_size[0])
-        indices_trunk = self.trunk_sampler.get_next(batch_size[1])
-        vxs = self.train_x[0][indices_branch]
-        grid = self.train_x[1][indices_trunk]
-        targets = self.train_y[indices_branch, indices_trunk]
-        return (vxs, grid), targets
+            inps, grid = self.train_x[0][indices], self.train_x[1]
+            tgts = None if self.train_y is None else self.train_y[indices]
+            return (inps, grid), tgts
+        else:
+            indices_branch = self.branch_sampler.get_next(batch_size[0])
+            indices_trunk = self.trunk_sampler.get_next(batch_size[1])
+            inps, grid = self.train_x[0][indices_branch], self.train_x[1][indices_trunk]
+            tgts = None if self.train_y is None else self.train_y[indices_branch, indices_trunk]
+            return (inps, grid), tgts
 
     def test(self):
         return self.test_x, self.test_y
