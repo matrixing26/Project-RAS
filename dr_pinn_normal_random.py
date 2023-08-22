@@ -142,27 +142,11 @@ while len(train_vxs) < 300:
     # generate some vxs to test
     pde_data = dde.data.TimePDE(geomtime, DF, [], num_domain = 20000)
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 400, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 20, [0])
     # testing_model = dde.Model(testing_new_data, net)
     a, _, c = testing_new_data.train_next_batch()
-    outs = []
-    for vx, aux in zip(a[0], c):
-        aux = aux[:, None]
-        grid = a[1]
-        vx = vx[None,:].repeat(20000, axis = 0)
-        # print(vx.shape, grid.shape, aux.shape)
-        out = model.predict((vx, grid), aux_vars = aux, operator = DF, grad_for_each=False, batch_size = 20000)
-        outs.append(out[:, 0])
-    outs = np.asarray(outs)
-    res = np.mean(np.abs(outs), axis = 1)
-    print(res.shape)
-    
-    print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
-    
-    select_num = min(20, 300 - len(train_vxs))
-    topk_index = np.argpartition(res, -select_num)[-select_num:] # select the top 20 vxs
     # print(res, topk_index, res[topk_index])
-    topk_vxs = a[0][topk_index]
+    topk_vxs = a[0]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
