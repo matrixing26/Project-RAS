@@ -1,23 +1,25 @@
 # %%
+import matplotlib.pyplot as plt
 import numpy as np
 import time
 import torch
-from torch import Tensor
 import os
 
 import deepxde.deepxde as dde
+from deepxde.deepxde.callbacks import EarlyStopping
 from datasets import makeTesting_dr
-from utils.PDETriple import PDETriple
+from utils.func import dirichlet
+from utils.PDETriple import PDETripleCartesianProd
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 
 # %%
-batchsize = 5000
+batchsize = 10
 decay = None
-iter = 20000
+iter = 40000
 ls = 0.1
 lr = 1e-3
-size = 50
+size = 20
 
 train_name = f"datasets/DF/TRAIN_{size}_{ls:.2f}_101_101.npz"
 test_name = f"datasets/DF/TEST_{size}_{ls:.2f}_101_101.npz"
@@ -29,14 +31,6 @@ if not os.path.exists(train_name):
 if not os.path.exists(test_name):
     makeTesting_dr(length_scale = ls, size = size, name = test_name)
     
-# %%
-def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
-    x_trunk = inputs[1] # x_trunk.shape = (t, 2)
-    x, t = x_trunk[:, (0,)], x_trunk[:, (1,)] # 10201
-    # using sine function would have some errors
-    scale_factor = 10 * (x * (1 - x) * t)
-    return scale_factor * (outputs + 1)
-
 # %%
 train_data = np.load(train_name)
 train_vxs = train_data["vxs"]
@@ -52,7 +46,7 @@ del test_data
 print(test_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
-net = dde.nn.pytorch.DeepONet(
+net = dde.nn.pytorch.DeepONetCartesianProd(
     layer_sizes_branch = [101, 100, 100],
     layer_sizes_trunk = [2, 100, 100, 100],
     activation = "gelu",
@@ -61,18 +55,15 @@ net = dde.nn.pytorch.DeepONet(
 
 net.apply_output_transform(dirichlet)
 
-data = PDETriple(X_train=(train_vxs, train_grid), 
-                 y_train=train_uxts,
-                 X_test=(test_vxs, test_grid), 
-                 y_test=test_uxts, 
-                 boundary = []
-                 )
+data = PDETripleCartesianProd(X_train=(train_vxs, train_grid), y_train=train_uxts, 
+                              X_test=(test_vxs, test_grid), y_test=test_uxts, 
+                              boundary = [])
 
 model = dde.Model(data, net)
 model.compile("adam", 
               lr = lr, 
               loss = "mse", 
-              metrics = ["l2 relative error"], 
+              metrics = ["mean l2 relative error"], 
               decay = decay)
 
 # %%

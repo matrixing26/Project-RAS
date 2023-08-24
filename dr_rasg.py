@@ -117,7 +117,7 @@ while len(train_vxs) < total_num:
                                 num_domain = test_points)
     
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 1, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 100, [0])
     (vxs, grid), _, auxs = testing_new_data.train_next_batch()
     outs = []
     for vx, aux in zip(vxs, auxs):
@@ -132,7 +132,8 @@ while len(train_vxs) < total_num:
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    topk_index = [0]
+    select_num = min(test_select_num, total_num - len(train_vxs))
+    topk_index = np.argpartition(res, -select_num)[-select_num:] # 
     topk_vxs = vxs[topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
@@ -171,3 +172,5 @@ while len(train_vxs) < total_num:
         plt.show()
 
 torch.save(model.state_dict(), modelsave_path)
+
+
