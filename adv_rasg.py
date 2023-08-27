@@ -30,8 +30,8 @@ test_select_num = 1
 train_name = "datasets/ADV/TRAIN_30_0.50_101_101.npz"
 test_name = "datasets/ADV/TEST_100_0.50_101_101.npz"
 pretrain_path = "datasets/ADV/PRETRAIN_30_0.50_20230827-15-37-13.pth"
-modelsave_path = f"results/ADV/ct_{date}.pth"
-csv_path = f"results/ADV/ct_{date}.csv"
+modelsave_path = f"results/ADV/rasg_{date}.pth"
+csv_path = f"results/ADV/rasg_{date}.csv"
 os.makedirs("results/ADV", exist_ok=True)
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -110,7 +110,7 @@ while len(train_vxs) < total_num:
                                 num_domain = test_points)
     
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 1, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 100, [0])
     (vxs, grid), _, auxs = testing_new_data.train_next_batch()
     outs = []
     for vx, aux in zip(vxs, auxs):
@@ -125,11 +125,14 @@ while len(train_vxs) < total_num:
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    _, uxts = advection_solver(vxs)
+    select_num = min(test_select_num, total_num - len(train_vxs))
+    topk_index = np.argpartition(res, -select_num)[-select_num:] # 
+    topk_vxs = vxs[topk_index]
+    _, uxts = advection_solver(topk_vxs)
     uxts = uxts.reshape(-1, 101 * 101)
 
     # then add the new data to the training set, and train the model
-    train_vxs = np.concatenate([train_vxs, vxs], axis = 0)
+    train_vxs = np.concatenate([train_vxs, topk_vxs], axis = 0)
     train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
     
     print(f"Train with: {len(train_vxs)} data")

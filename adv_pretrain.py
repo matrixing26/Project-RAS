@@ -14,20 +14,20 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 # %%
 batchsize = 5000
 decay = None
-iter = 20000
+iter = 10000
 ls = 0.5
 lr = 1e-3
-size = 50
+size = 30
 
 train_name = f"datasets/ADV/TRAIN_{size}_{ls:.2f}_101_101.npz"
-test_name = f"datasets/ADV/TEST_{size}_{ls:.2f}_101_101.npz"
+test_name = f"datasets/ADV/TEST_100_{ls:.2f}_101_101.npz"
 
 os.makedirs("datasets/ADV", exist_ok = True)
 
 if not os.path.exists(train_name):
     makeTesting_adv(length_scale = ls, size = size, name = train_name)
 if not os.path.exists(test_name):
-    makeTesting_adv(length_scale = ls, size = size, name = test_name)
+    makeTesting_adv(length_scale = ls, size = 100, name = test_name)
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -45,7 +45,7 @@ test_vxs = test_data["vxs"]
 test_grid = test_data["xt"].reshape(-1, 2)
 test_uxts = test_data["uxts"].reshape(-1, 101 * 101)
 del test_data
-print(test_vxs.shape, train_grid.shape, train_uxts.shape)
+print(train_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 net = dde.nn.pytorch.DeepONet(

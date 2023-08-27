@@ -20,14 +20,14 @@ lr = 1e-3
 size = 50
 
 train_name = f"datasets/DF/TRAIN_{size}_{ls:.2f}_101_101.npz"
-test_name = f"datasets/DF/TEST_{size}_{ls:.2f}_101_101.npz"
+test_name = f"datasets/DF/TEST_100_{ls:.2f}_101_101.npz"
 
 os.makedirs("datasets/DF", exist_ok = True)
 
 if not os.path.exists(train_name):
     makeTesting_dr(length_scale = ls, size = size, name = train_name)
 if not os.path.exists(test_name):
-    makeTesting_dr(length_scale = ls, size = size, name = test_name)
+    makeTesting_dr(length_scale = ls, size = 100, name = test_name)
     
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:

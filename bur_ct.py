@@ -1,230 +1,166 @@
 # %%
-import torch
+import deepxde.deepxde as dde
+import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
-import deepxde.deepxde as dde
-from datasets import *
-from utils.PDETriple import PDETripleCartesianProd
-from utils.pdes import burgers_equation
-from datasets.solver import interp_nd
+import torch
+from torch import Tensor
+
+from datasets import burger_solver
+from utils.func import plot_data
+from utils.PDETriple import PDETriple
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 # dde.config.set_random_seed(2023)
 
-# %%
-total_training_vx = 1000
-ls = 1.0
-testing_path = f"datasets/BUR_100_{ls:.2f}_101_101.npz"
-
-start_num = 100
-check_num = 2000
-select_num = 100
-
-lr_start = 1e-3
-lr_middle = 1e-3
-lr_end = 1e-3
-
-iter_start = 100000
-iter_middle = 100000
-iter_end = 100000
-
-batch_start = lambda n: n // 20
-batch_middle = lambda n: n // 20
-batch_end = lambda n: n // 20
-
-decay_start = ("step", 25000, 0.5)
-decay_middle = ("step", 25000, 0.5)
-decay_end = ("step", 25000, 0.5)
-
-if False:
-    makeTesting_bur(length_scale = ls)
 
 # %%
-def plot_train(i):
-    # plot-data
-    fig, (ax1,ax2,ax3,ax4) = plt.subplots(1, 4, figsize=(20,5))
+batchsize = 10000
+decay = None
+iters = 10000
+ls = 0.5
+lr = 1e-3
+total_num = 500
+test_num = 100
+test_points = 20000
+test_select_num = 1
 
-    v = train_vxs[i]
-    x = np.linspace(0,1,v.shape[0])
-
-    ax1.set_xlim(0,1)
-    ax1.scatter(x, v, s=1)
-
-    ut = train_uxts[i]
-    xt = train_grid
-
-    ax2.set_xlim(0,1)
-    ax2.set_ylim(0,1)
-    ax2.set_aspect('equal')
-    ax2.scatter(xt[...,0], xt[...,1], c=ut)
-    colorbar = fig.colorbar(ax2.scatter(xt[...,0], xt[...,1], c=ut), ax=ax2)
-
-    out = model.predict((train_vxs[(i,),...], xt))
-
-    ax3.set_xlim(0,1)
-    ax3.set_ylim(0,1)
-    ax3.set_aspect('equal')
-    ax3.scatter(xt[...,0], xt[...,1], c=out)
-    colorbar = fig.colorbar(ax3.scatter(xt[...,0], xt[...,1], c=out), ax=ax3)
-
-    ax4.set_xlim(0,1)
-    ax4.set_ylim(0,1)
-    ax4.set_aspect('equal')
-    ax4.scatter(xt[...,0], xt[...,1], c=ut-out)
-    colorbar = fig.colorbar(ax4.scatter(xt[...,0], xt[...,1], c=np.abs(ut-out)), ax=ax4)
-
-    plt.tight_layout()
-    plt.show()
-
-def plot_test(i):
-    # plot-data
-    fig, (ax1,ax2,ax3,ax4) = plt.subplots(1, 4, figsize=(20,5))
-
-    v = test_vxs[i]
-    x = np.linspace(0,1,v.shape[0])
-
-    ax1.set_xlim(0,1)
-    ax1.scatter(x, v, s=1)
-
-    ut = test_uxts[i]
-    xt = test_grid
-
-    ax2.set_xlim(0,1)
-    ax2.set_ylim(0,1)
-    ax2.set_aspect('equal')
-    ax2.scatter(xt[...,0], xt[...,1], c=ut)
-    colorbar = fig.colorbar(ax2.scatter(xt[...,0], xt[...,1], c=ut), ax=ax2)
-
-    out = model.predict((test_vxs[(i,),...], xt))
-
-    ax3.set_xlim(0,1)
-    ax3.set_ylim(0,1)
-    ax3.set_aspect('equal')
-    ax3.scatter(xt[...,0], xt[...,1], c=out)
-    colorbar = fig.colorbar(ax3.scatter(xt[...,0], xt[...,1], c=out), ax=ax3)
-
-    ax4.set_xlim(0,1)
-    ax4.set_ylim(0,1)
-    ax4.set_aspect('equal')
-    ax4.scatter(xt[...,0], xt[...,1], c=ut-out)
-    colorbar = fig.colorbar(ax4.scatter(xt[...,0], xt[...,1], c=np.abs(ut-out)), ax=ax4)
-
-    plt.tight_layout()
-    plt.show()
+train_name = "datasets/BUR/TRAIN_100_0.50_101_101.npz"
+test_name = "datasets/BUR/TEST_200_0.50_101_101.npz"
+pretrain_path = "datasets/BUR/PRETRAIN_100_0.50_20230827-15-40-44.pth"
+modelsave_path = f"results/BUR/rasg_{date}.pth"
+csv_path = f"results/BUR/rasg_{date}.csv"
+os.makedirs("results/BUR", exist_ok=True)
 # %%
-space = dde.data.GRF(1.0, kernel = "ExpSineSquared", length_scale = ls, N= 1000, interp="cubic")
-geom = dde.geometry.Interval(0, 1)
-timedomain = dde.geometry.TimeDomain(0, 1)
-geomtime = dde.geometry.GeometryXTime(geom, timedomain)
-vxs = space.eval_batch(space.random(start_num), np.linspace(0, 1, 101)[:, None])
-xt, uxts = burger_solver(vxs)
-grid = xt.reshape(101 * 101, -1)
-uxts = uxts.reshape(-1, 101 * 101)
+def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
+    return outputs
+
+def BUR(x: tuple[Tensor, Tensor], 
+       y: Tensor, 
+       aux_vars: Tensor
+       ) -> Tensor:
+    dy_t = dde.grad.jacobian(y, x[1], j=1)
+    dy_x = dde.grad.jacobian(y, x[1], j=0)
+    dy_xx = dde.grad.hessian(y, x[1], j=0)
+    out = dy_t + y * dy_x - 0.1 * dy_xx
+    return out.abs()
+
+def plotdata(i, data = "train"):
+    vx = train_vxs[i] if data == "train" else test_vxs[i]
+    grid = train_grid if data == "train" else test_grid
+    vx = vx[None, :].repeat(grid.shape[0], axis = 0)
+    uxt = train_uxts[i] if data == "train" else test_uxts[i]
+    out = model.predict((vx, grid),
+                        batch_size= grid.shape[0])
+    plot_data(vx[0], grid, out[:, 0], uxt)
 
 # %%
-train_vxs = vxs
-train_grid = grid
-train_uxts = uxts
-print(train_vxs.shape, train_grid.shape, train_uxts.shape)
+train_data = np.load(train_name)
+train_vxs = train_data["vxs"]
+train_grid = train_data["xt"].reshape(-1, 2)
+train_uxts = train_data["uxts"].reshape(-1, 101 * 101)
+del train_data
 
-test_data = np.load(testing_path)
+test_data = np.load(test_name)
 test_vxs = test_data["vxs"]
 test_grid = test_data["xt"].reshape(-1, 2)
 test_uxts = test_data["uxts"].reshape(-1, 101 * 101)
 del test_data
+print(train_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 # %%
-def dirichlet(inputs, outputs):
-    return outputs
-    vxs, xt = inputs
-    with torch.no_grad():
-        vxs = interp_nd(vxs, xt[...,(0,)] * 2 - 1)
-    t = xt[None, ...,1]
-    return 2 * outputs * t + vxs
-
-data = PDETripleCartesianProd(X_train=(train_vxs, train_grid), y_train=train_uxts, X_test=(test_vxs, test_grid), y_test=test_uxts, boundary = [])
+data = PDETriple(X_train=(train_vxs, train_grid), 
+                 y_train=train_uxts, 
+                 X_test=(test_vxs, test_grid), 
+                 y_test=test_uxts, 
+                 boundary = []
+                 )
 
 # Net
-net = dde.nn.DeepONetCartesianProd([101, 100, 100, 100], [2, 100, 100, 100], "gelu", "Glorot normal")
+net = dde.nn.pytorch.DeepONet(
+    layer_sizes_branch = [101, 100, 100],
+    layer_sizes_trunk = [2, 100, 100, 100],
+    activation = "gelu",
+    kernel_initializer = "Glorot normal",
+)
+
 net.apply_output_transform(dirichlet)
-pde = lambda x, y, aux: burgers_equation(x, y, aux, 0.1)
+net.load_state_dict(torch.load(pretrain_path))
 
-# %%
-
-# pre-train
 model = dde.Model(data, net)
-model.compile("adam", 
-              lr= lr_start, 
-              loss= ["mse"], 
-              metrics = ["mean l2 relative error"], 
-              decay = decay_start)
+
+model.compile("adam", lr = lr, metrics = ["l2 relative error"], decay = decay)
+plotdata(0, "train")
+plotdata(0, "test")
 
 # %%
-plot_train(0)
-plot_test(0)
+geom = dde.geometry.Interval(0, 1)
+timedomain = dde.geometry.TimeDomain(0, 1)
+geomtime = dde.geometry.GeometryXTime(geom, timedomain)
+func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
 
 # %%
-losshistory, train_state = model.train(iterations = iter_start, batch_size = batch_start(len(train_vxs)))
-dde.utils.plot_loss_history(losshistory)
-
-losshistory.to_pandas().to_csv(f"results/bur_{date}_ct.csv", index=False)
-
-# %%
-plot_train(0)
-plot_test(0)
-
-# %%
-# tune
-while len(train_vxs) < total_training_vx:
+while len(train_vxs) < total_num:
     # generate some vxs to test
-    pde_data = dde.data.TimePDE(geomtime, pde, [], num_domain = 20000)
+    pde_data = dde.data.TimePDE(geomtime, 
+                                BUR, 
+                                [], 
+                                num_domain = test_points)
+    
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    geom = dde.geometry.Interval(0, 1)
-    timedomain = dde.geometry.TimeDomain(0, 1)
-    geomtime = dde.geometry.GeometryXTime(geom, timedomain)            
-    func_space = dde.data.GRF(1.0, kernel = "ExpSineSquared",length_scale = ls, N= 1000, interp="linear")
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, select_num, [0])
-    # testing_model = dde.Model(testing_new_data, net)
-    (vxs, xts), _, c = testing_new_data.train_next_batch()
-
-    topk_vxs = vxs
-    xt, uxts = burger_solver(topk_vxs)
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 1, [0])
+    (vxs, grid), _, auxs = testing_new_data.train_next_batch()
+    outs = []
+    for vx, aux in zip(vxs, auxs):
+        aux = aux[:, None]
+        vx = vx[None, :].repeat(test_points, axis = 0)
+        out = model.predict((vx, grid), 
+                            aux_vars = aux, 
+                            operator = BUR, 
+                            batch_size= test_points)
+        outs.append(out[:, 0])
+    outs = np.asarray(outs)
+    res = np.mean(outs, axis = 1)
+    print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
+    
+    _, uxts = burger_solver(vxs)
     uxts = uxts.reshape(-1, 101 * 101)
- 
+
     # then add the new data to the training set, and train the model
-    train_vxs = np.concatenate([train_vxs, topk_vxs], axis = 0)
+    train_vxs = np.concatenate([train_vxs, vxs], axis = 0)
     train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
     
-    print(len(train_vxs))
-    data = PDETripleCartesianProd(X_train=(train_vxs, train_grid), y_train=train_uxts, X_test=(test_vxs, test_grid), y_test=test_uxts, boundary = [])
+    print(f"Train with: {len(train_vxs)} data")
+    data = PDETriple(X_train=(train_vxs, train_grid), 
+                     y_train=train_uxts, 
+                     X_test=(test_vxs, test_grid), 
+                     y_test=test_uxts, 
+                     boundary = [])
     
-    net = dde.nn.DeepONetCartesianProd([101, 100, 100, 100], [2, 100, 100, 100], "gelu", "Glorot normal")
-    net.apply_output_transform(dirichlet)
-    
-    # tune-train
     model = dde.Model(data, net)
-    lr = lr_middle if len(train_vxs) != total_training_vx else lr_end
-    decay = decay_middle if len(train_vxs) != total_training_vx else decay_end
-    batchsize = batch_middle(len(train_vxs)) if len(train_vxs) != total_training_vx else batch_end(len(train_vxs))
-    iterations = iter_middle if len(train_vxs) != total_training_vx else iter_end
+    
     model.compile("adam", 
                   lr = lr, 
-                  metrics = ["mean l2 relative error"],
+                  metrics = ["l2 relative error"],
                   decay = decay,)
-
-    losshistory, train_state = model.train(iterations=iterations, batch_size = batchsize)
+    
+    losshistory, train_state = model.train(iterations=iters if len(train_vxs) % 20 == 0 else 1000, 
+                                           batch_size = batchsize)
     
     pd_frame = losshistory.to_pandas()
-    pd_frame = pd.concat([pd.read_csv(f"results/bur_{date}_ct.csv"), pd_frame], axis = 0, ignore_index=True)
-    pd_frame.to_csv(f"results/bur_{date}_ct.csv", index=False)
-    dde.utils.plot_loss_history(losshistory)
-    plt.show()
-    plot_train(0)
-    plot_test(0)
+    if os.path.exists(csv_path):
+        pd_frame = pd.concat([pd.read_csv(csv_path), pd_frame], axis = 0, ignore_index=True)
+    pd_frame.to_csv(csv_path, index=False)
     
-torch.save(model.state_dict(), f"results/bur_model_{date}_ct.pth")
+    if len(train_vxs) % 20 == 0:
+        dde.utils.plot_loss_history(losshistory)
+        plotdata(0, "train")
+        plotdata(0, "test")
+        plt.show()
+
+torch.save(model.state_dict(), modelsave_path)
 
 

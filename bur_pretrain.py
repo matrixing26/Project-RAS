@@ -17,17 +17,17 @@ decay = None
 iter = 20000
 ls = 0.5
 lr = 1e-3
-size = 50
+size = 100
 
 train_name = f"datasets/BUR/TRAIN_{size}_{ls:.2f}_101_101.npz"
-test_name = f"datasets/BUR/TEST_{size}_{ls:.2f}_101_101.npz"
+test_name = f"datasets/BUR/TEST_200_{ls:.2f}_101_101.npz"
 
 os.makedirs("datasets/BUR", exist_ok = True)
 
 if not os.path.exists(train_name):
     makeTesting_bur(length_scale = ls, size = size, name = train_name)
 if not os.path.exists(test_name):
-    makeTesting_bur(length_scale = ls, size = size, name = test_name)
+    makeTesting_bur(length_scale = ls, size = 200, name = test_name)
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -45,7 +45,7 @@ test_vxs = test_data["vxs"]
 test_grid = test_data["xt"].reshape(-1, 2)
 test_uxts = test_data["uxts"].reshape(-1, 101 * 101)
 del test_data
-print(test_vxs.shape, train_grid.shape, train_uxts.shape)
+print(train_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 net = dde.nn.pytorch.DeepONet(
