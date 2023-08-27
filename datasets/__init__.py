@@ -62,21 +62,29 @@ def makeTesting_dr(size: int = 100, length_scale: float = 0.05, name = None) -> 
     np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
     return path
 
-def makeTesting_adv(size: int = 100, length_scale: float = 0.1, Nx = 101, Nt = 101) -> str:
+def makeTesting_adv(size: int = 100, 
+                    length_scale: float = 0.1, 
+                    name: str = None, 
+                    Nx = 101, 
+                    Nt = 101) -> str:
     space = GRF_pos(1.0, length_scale = length_scale, N= 1000, interp="cubic")
     vxs = space.eval_batch(space.random(size), np.linspace(0, 1, Nx)[:, None])
     xt, uxts = advection_solver(vxs, Nx=Nx, Nt=Nt)
     print("\n",vxs.shape, uxts.shape, xt.shape)
-    path = f"datasets/ADV_{size}_{length_scale:.2f}_101_101.npz"
+    path = name or f"datasets/ADV_{size}_{length_scale:.2f}_101_101.npz"
     np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
     return path
 
-def makeTesting_bur(size: int = 100, length_scale: float = 0.5, Nx = 101, Nt = 101) -> str:
+def makeTesting_bur(size: int = 100, 
+                    length_scale: float = 0.5, 
+                    name: str = None,
+                    Nx = 101, 
+                    Nt = 101) -> str:
     space = dde.data.GRF(1.0, kernel = "ExpSineSquared", length_scale = length_scale, N= 1000, interp="cubic")
     vxs = space.eval_batch(space.random(size), np.linspace(0, 1, Nx)[:, None])
     xt, uxts = burger_solver(vxs, Nx=Nx, Nt=Nt)
     print("\n",vxs.shape, uxts.shape, xt.shape)
-    path = f"datasets/BUR_{size}_{length_scale:.2f}_101_101.npz"
+    path = name or f"datasets/BUR_{size}_{length_scale:.2f}_101_101.npz"
     np.savez(path, info = {"size": size, "grid": (101, 101), "grid_sample": "uniform", "length_scale": length_scale}, vxs = vxs, uxts = uxts, xt = xt)
     return path
 class GRF_pos(dde.data.function_spaces.FunctionSpace):

@@ -6,7 +6,6 @@ import time
 import matplotlib.pyplot as plt
 import deepxde.deepxde as dde
 from datasets import *
-from utils.func import H1norm
 from utils.PDETriple import PDETripleCartesianProd
 from utils.pdes import burgers_equation
 from datasets.solver import interp_nd
@@ -19,9 +18,9 @@ total_training_vx = 1000
 ls = 1.0
 testing_path = f"datasets/BUR_100_{ls:.2f}_101_101.npz"
 
-start_num = 100
+start_num = 1000
 check_num = 2000
-select_num = 100
+select_num = 50
 
 lr_start = 1e-3
 lr_middle = 1e-3
@@ -172,65 +171,12 @@ plot_test(0)
 losshistory, train_state = model.train(iterations = iter_start, batch_size = batch_start(len(train_vxs)))
 dde.utils.plot_loss_history(losshistory)
 
-losshistory.to_pandas().to_csv(f"results/bur_{date}_h1.csv", index=False)
+losshistory.to_pandas().to_csv(f"results/bur_{date}_random.csv", index=False)
 
 # %%
 plot_train(0)
 plot_test(0)
 
-# %%
-# tune
-while len(train_vxs) < total_training_vx:
-    # generate some vxs to test
-    pde_data = dde.data.TimePDE(geomtime, pde, [], num_domain = 20000)
-    eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    geom = dde.geometry.Interval(0, 1)
-    timedomain = dde.geometry.TimeDomain(0, 1)
-    geomtime = dde.geometry.GeometryXTime(geom, timedomain)            
-    func_space = dde.data.GRF(1.0, kernel = "ExpSineSquared",length_scale = ls, N= 1000, interp="linear")
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, check_num, [0])
-    # testing_model = dde.Model(testing_new_data, net)
-    (vxs, xts), _, c = testing_new_data.train_next_batch()
-    h1 = H1norm(vxs)
-    print(np.mean(h1), np.std(h1))
-    select_num = min(select_num, total_training_vx - len(train_vxs))
-    topk_index = np.argpartition(h1, -select_num)[-select_num:] # select the top 20 vxs
-    
-    topk_vxs = vxs[topk_index]
-    xt, uxts = burger_solver(topk_vxs)
-    uxts = uxts.reshape(-1, 101 * 101)
- 
-    # then add the new data to the training set, and train the model
-    train_vxs = np.concatenate([train_vxs, topk_vxs], axis = 0)
-    train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
-    
-    print(len(train_vxs))
-    data = PDETripleCartesianProd(X_train=(train_vxs, train_grid), y_train=train_uxts, X_test=(test_vxs, test_grid), y_test=test_uxts, boundary = [])
-    
-    net = dde.nn.DeepONetCartesianProd([101, 100, 100, 100], [2, 100, 100, 100], "gelu", "Glorot normal")
-    net.apply_output_transform(dirichlet)
-    
-    # tune-train
-    model = dde.Model(data, net)
-    lr = lr_middle if len(train_vxs) != total_training_vx else lr_end
-    decay = decay_middle if len(train_vxs) != total_training_vx else decay_end
-    batchsize = batch_middle(len(train_vxs)) if len(train_vxs) != total_training_vx else batch_end(len(train_vxs))
-    iterations = iter_middle if len(train_vxs) != total_training_vx else iter_end
-    model.compile("adam", 
-                  lr = lr, 
-                  metrics = ["mean l2 relative error"],
-                  decay = decay,)
-
-    losshistory, train_state = model.train(iterations=iterations, batch_size = batchsize)
-    
-    pd_frame = losshistory.to_pandas()
-    pd_frame = pd.concat([pd.read_csv(f"results/bur_{date}_h1.csv"), pd_frame], axis = 0, ignore_index=True)
-    pd_frame.to_csv(f"results/bur_{date}_h1.csv", index=False)
-    dde.utils.plot_loss_history(losshistory)
-    plt.show()
-    plot_train(0)
-    plot_test(0)
-    
-torch.save(model.state_dict(), f"results/bur_model_{date}_h1.pth")
+torch.save(model.state_dict(), f"results/bur_model_{date}_random.pth")
 
 

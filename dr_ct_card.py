@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import deepxde.deepxde as dde
 from datasets import makeTesting_dr
 from datasets import parallel_solver, diffusion_reaction_solver
-from utils.func import dirichlet, periodic, L2norm
+from utils.func import dirichlet, periodic
 from utils.PDETriple import PDETripleCartesianProd
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
@@ -17,7 +17,7 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 total_training_vx = 300
 ls = 0.05
 
-start_num = 100
+start_num = 300
 check_num = 1000
 select_num = 30
 solver_worker = 0
@@ -26,7 +26,7 @@ lr_start = 5e-3
 lr_middle = 5e-3
 lr_end = 1e-3
 
-iter_start = 40000
+iter_start = 100000
 iter_middle = 20000
 iter_end = 60000
 
@@ -34,7 +34,7 @@ batch_start = lambda n: n // 5
 batch_middle = lambda n: n // 5
 batch_end = lambda n: n
 
-decay_start = None
+decay_start = ("inverse time", 10000, 0.4)
 decay_middle = ("inverse time", 5000, 0.4)
 decay_end = ("inverse time", 5000, 0.4)
 
@@ -117,7 +117,7 @@ losshistory, train_state = model.train(iterations = iter_start, batch_size = bat
 dde.utils.plot_loss_history(losshistory)
 
 # %%
-losshistory.to_pandas().to_csv(f"results/loss_history_{date}_l2.csv", index=False)
+losshistory.to_pandas().to_csv(f"results/loss_history_{date}_random.csv", index=False)
 
 fig, (ax1,ax2,ax3) = plt.subplots(1, 3, figsize=(15,5))
 
@@ -155,19 +155,16 @@ while len(train_vxs) < total_training_vx:
     timedomain = dde.geometry.TimeDomain(0, 1)
     geomtime = dde.geometry.GeometryXTime(geom, timedomain)
     func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, check_num, [0])
+    select_num = min(select_num, total_training_vx - len(train_vxs))
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, select_num, [0])
     # testing_model = dde.Model(testing_new_data, net)
     a, _, c = testing_new_data.train_next_batch()
-    l2 = L2norm(a[0])
-    print(np.mean(l2), np.std(l2))
-    select_num = min(select_num, total_training_vx - len(train_vxs))
-    topk_index = np.argpartition(l2, -select_num)[-select_num:] # select the top 20 vxs
-    topk_vxs = a[0][topk_index]
-    uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = solver_worker)
+    
+    uxts = parallel_solver(diffusion_reaction_solver, a[0], num_workers = solver_worker)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
     # then add the new data to the training set, and train the model
-    train_vxs = np.concatenate([train_vxs, topk_vxs], axis = 0)
+    train_vxs = np.concatenate([train_vxs, a[0]], axis = 0)
     train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
     
     print(len(train_vxs))
@@ -184,13 +181,12 @@ while len(train_vxs) < total_training_vx:
                   decay = decay,)
 
     losshistory, train_state = model.train(iterations=iterations, batch_size = batchsize)
-    
     pd_frame = losshistory.to_pandas()
-    pd_frame = pd.concat([pd.read_csv(f"results/loss_history_{date}_l2.csv"), pd_frame], axis = 0, ignore_index=True)
-    pd_frame.to_csv(f"results/loss_history_{date}_l2.csv", index=False)
+    pd_frame = pd.concat([pd.read_csv(f"results/loss_history_{date}_random.csv"), pd_frame], axis = 0, ignore_index=True)
+    pd_frame.to_csv(f"results/loss_history_{date}_random.csv", index=False)
     dde.utils.plot_loss_history(losshistory)
     plt.show()
-    
-torch.save(model.state_dict(), f"results/model_{date}_l2.pth")
+
+torch.save(model.state_dict(), f"results/model_{date}_random.pth")
 
 
