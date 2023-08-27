@@ -20,7 +20,7 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 batchsize = 10000
 decay = None
 iters = 10000
-ls = 0.5
+ls = 1.0
 lr = 1e-3
 total_num = 500
 test_num = 100
@@ -100,7 +100,7 @@ plotdata(0, "test")
 geom = dde.geometry.Interval(0, 1)
 timedomain = dde.geometry.TimeDomain(0, 1)
 geomtime = dde.geometry.GeometryXTime(geom, timedomain)
-func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
+func_space = dde.data.GRF(1.0, length_scale = ls, kernel = "ExpSineSquared", N= 1000, interp="linear")
 
 # %%
 while len(train_vxs) < total_num:

@@ -14,8 +14,8 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 # %%
 batchsize = 5000
 decay = None
-iter = 20000
-ls = 0.5
+iter = 10000
+ls = 1.0
 lr = 1e-3
 size = 100
 
