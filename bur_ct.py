@@ -30,8 +30,8 @@ test_select_num = 1
 train_name = "datasets/BUR/TRAIN_100_0.50_101_101.npz"
 test_name = "datasets/BUR/TEST_200_0.50_101_101.npz"
 pretrain_path = "datasets/BUR/PRETRAIN_100_0.50_20230827-15-40-44.pth"
-modelsave_path = f"results/BUR/rasg_{date}.pth"
-csv_path = f"results/BUR/rasg_{date}.csv"
+modelsave_path = f"results/BUR/ct_{date}.pth"
+csv_path = f"results/BUR/ct_{date}.csv"
 os.makedirs("results/BUR", exist_ok=True)
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
