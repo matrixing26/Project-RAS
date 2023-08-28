@@ -29,8 +29,8 @@ test_select_num = 1
 train_name = "datasets/DF/TRAIN_50_0.10_101_101.npz"
 test_name = "datasets/DF/TEST_50_0.10_101_101.npz"
 pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
-modelsave_path = f"results/DF/random_{date}.pth"
-csv_path = f"results/DF/random_{date}.csv"
+modelsave_path = f"results/DF/ct_{date}.pth"
+csv_path = f"results/DF/ct_{date}.csv"
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:

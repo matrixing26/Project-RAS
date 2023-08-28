@@ -27,9 +27,9 @@ test_num = 100
 test_points = 20000
 test_select_num = 1
 
-train_name = "datasets/BUR/TRAIN_100_0.50_101_101.npz"
-test_name = "datasets/BUR/TEST_200_0.50_101_101.npz"
-pretrain_path = "datasets/BUR/PRETRAIN_100_0.50_20230827-15-40-44.pth"
+train_name = "datasets/BUR/TRAIN_100_1.00_101_101.npz"
+test_name = "datasets/BUR/TEST_200_1.00_101_101.npz"
+pretrain_path = "datasets/BUR/PRETRAIN_100_1.00_20230827-16-15-53.pth"
 modelsave_path = f"results/BUR/rasg_{date}.pth"
 csv_path = f"results/BUR/rasg_{date}.csv"
 os.makedirs("results/BUR", exist_ok=True)
