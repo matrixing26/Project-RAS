@@ -132,8 +132,7 @@ while len(train_vxs) < total_num:
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    topk_index = [0]
-    topk_vxs = vxs[topk_index]
+    topk_vxs = vxs
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
