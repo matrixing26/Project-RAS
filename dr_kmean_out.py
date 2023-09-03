@@ -121,8 +121,6 @@ while len(train_vxs) < total_num:
     testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, test_num, [0])
     (vxs, grid), _, auxs = testing_new_data.train_next_batch()
     
-    kmeans = KMeans(n_clusters = test_select_num).fit(vxs)
-    
     outs = []
     for vx, aux in zip(vxs, auxs):
         aux = aux[:, None]
@@ -135,6 +133,8 @@ while len(train_vxs) < total_num:
     outs = np.asarray(outs)
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
+    
+    kmeans = KMeans(n_clusters = test_select_num).fit(outs)
     
     selects = []
     for i in range(test_select_num):
