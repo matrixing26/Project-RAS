@@ -7,10 +7,9 @@ import pandas as pd
 import time
 import torch
 from torch import Tensor
-from sklearn.cluster import KMeans
 
 from datasets import parallel_solver, diffusion_reaction_solver
-from utils.func import plot_data, arg_topk
+from utils.func import plot_data
 from utils.PDETriple import PDETriple
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
@@ -23,15 +22,15 @@ iters = 20000
 ls = 0.1
 lr = 1e-3
 total_num = 200
-test_num = 1000
+test_num = 100
 test_points = 20000
-test_select_num = 10
+test_select_num = 1
 
 train_name = "datasets/DF/TRAIN_50_0.10_101_101.npz"
 test_name = "datasets/DF/TEST_50_0.10_101_101.npz"
 pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
-modelsave_path = f"results/DF/kmeanout_{date}.pth"
-csv_path = f"results/DF/kmeanout_{date}.csv"
+modelsave_path = f"results/DF/bct_{date}.pth"
+csv_path = f"results/DF/bct_{date}.csv"
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -118,9 +117,8 @@ while len(train_vxs) < total_num:
                                 num_domain = test_points)
     
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, test_num, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 10, [0])
     (vxs, grid), _, auxs = testing_new_data.train_next_batch()
-    
     outs = []
     for vx, aux in zip(vxs, auxs):
         aux = aux[:, None]
@@ -134,16 +132,8 @@ while len(train_vxs) < total_num:
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    kmeans = KMeans(n_clusters = test_select_num).fit(outs)
-    
-    selects = []
-    for i in range(test_select_num):
-        label_ind = np.nonzero(kmeans.labels_ == i)[0]
-        label_out = res[label_ind]
-        select = label_ind[arg_topk(label_out, 1)[0]]
-        selects.append(select)
-    
-    topk_vxs = vxs[selects]
+    topk_index = [0]
+    topk_vxs = vxs[topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
@@ -181,5 +171,3 @@ while len(train_vxs) < total_num:
         plt.show()
 
 torch.save(model.state_dict(), modelsave_path)
-
-

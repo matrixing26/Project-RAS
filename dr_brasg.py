@@ -7,10 +7,9 @@ import pandas as pd
 import time
 import torch
 from torch import Tensor
-from sklearn.cluster import KMeans
 
 from datasets import parallel_solver, diffusion_reaction_solver
-from utils.func import plot_data, arg_topk
+from utils.func import plot_data
 from utils.PDETriple import PDETriple
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
@@ -30,8 +29,8 @@ test_select_num = 10
 train_name = "datasets/DF/TRAIN_50_0.10_101_101.npz"
 test_name = "datasets/DF/TEST_50_0.10_101_101.npz"
 pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
-modelsave_path = f"results/DF/kmean_{date}.pth"
-csv_path = f"results/DF/kmean_{date}.csv"
+modelsave_path = f"results/DF/brasg_{date}.pth"
+csv_path = f"results/DF/brasg_{date}.csv"
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -118,11 +117,8 @@ while len(train_vxs) < total_num:
                                 num_domain = test_points)
     
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, test_num, [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 100, [0])
     (vxs, grid), _, auxs = testing_new_data.train_next_batch()
-    
-    kmeans = KMeans(n_clusters = test_select_num).fit(vxs)
-    
     outs = []
     for vx, aux in zip(vxs, auxs):
         aux = aux[:, None]
@@ -136,14 +132,9 @@ while len(train_vxs) < total_num:
     res = np.mean(outs, axis = 1)
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    selects = []
-    for i in range(test_select_num):
-        label_ind = np.nonzero(kmeans.labels_ == i)[0]
-        label_out = res[label_ind]
-        select = label_ind[arg_topk(label_out, 1)[0]]
-        selects.append(select)
-    
-    topk_vxs = vxs[selects]
+    select_num = min(test_select_num, total_num - len(train_vxs))
+    topk_index = np.argpartition(res, -select_num)[-select_num:] # 
+    topk_vxs = vxs[topk_index]
     uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
     uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
