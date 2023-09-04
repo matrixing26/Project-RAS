@@ -15,13 +15,13 @@ date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
 # dde.config.set_random_seed(2023)
 
 # %%
-batchsize = 10
+batchsize = 1
 decay = None
-iters = 40000
-ls = 0.05
+iters = 20000
+ls = 0.10
 lr = 1e-3
-size = 100
-total_num = 300
+size = 50
+total_num = 200
 
 train_name = f"datasets/DF/TRAIN_{size}_{ls:.2f}_101_101.npz"
 test_name = f"datasets/DF/TEST_{size}_{ls:.2f}_101_101.npz"
@@ -119,7 +119,7 @@ test_vxs = test_data["vxs"]
 test_grid = test_data["xt"].reshape(-1, 2)
 test_uxts = test_data["uxts"].reshape(-1, 101 * 101)
 del test_data
-print(test_vxs.shape, train_grid.shape, train_uxts.shape)
+print(train_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 # %%
@@ -134,7 +134,7 @@ net = dde.nn.pytorch.DeepONetCartesianProd(
 )
 
 net.apply_output_transform(dirichlet)
-net.load_state_dict(torch.load("datasets/DF/PRETRAIN_100_0.05_20230821-10-42-51.pth"))
+net.load_state_dict(torch.load("datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"))
 
 model = dde.Model(data, net)
 model.compile("adam", 
@@ -154,7 +154,7 @@ while len(train_vxs) < total_num:
     # generate some vxs to test
     pde_data = dde.data.TimePDE(geomtime, pde, [], num_domain = 20000)
     eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, len(train_vxs), [0])
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 1000, [0])
     # testing_model = dde.Model(testing_new_data, net)
     a, _, c = testing_new_data.train_next_batch()
     out = model.predict(a, aux_vars = c, operator = pde, grad_for_each=True)
@@ -162,7 +162,7 @@ while len(train_vxs) < total_num:
     
     print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
     
-    select_num = min(20, total_num - len(train_vxs))
+    select_num = min(10, total_num - len(train_vxs))
     topk_index = np.argpartition(res, -select_num)[-select_num:] # select the top 20 vxs
     # print(res, topk_index, res[topk_index])
     topk_vxs = a[0][topk_index]
