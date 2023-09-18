@@ -1,12 +1,24 @@
 import torch
 import numpy as np
 import math
-from typing import Callable, Tuple, Union, List, Any
+from typing import Callable, Tuple, Any
 from torch import nn, Tensor
 from torch.nn import functional as F
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
+from numbers import Number
 
-def solve_ADR(xmin: float, xmax: float, tmin: float, tmax: float, k: Callable[[],Any], v: Callable[[],Any], g: Callable[[],Any], dg: Callable[[],Any], f: Callable[[],Any], u0: Callable[[],Any], Nx: int,  Nt: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def solve_ADR(xmin: float, 
+              xmax: float, 
+              tmin: float, 
+              tmax: float, 
+              k: Callable[[],Any], 
+              v: Callable[[],Any], 
+              g: Callable[[],Any], 
+              dg: Callable[[],Any], 
+              f: Callable[[],Any], 
+              u0: Callable[[],Any], 
+              Nx: int,  
+              Nt: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Solve 1D equation: `u_t = (k(x) u_x)_x - v(x) u_x + g(u) + f(x, t)` with zero boundary condition.
 
@@ -64,6 +76,61 @@ def solve_ADR(xmin: float, xmax: float, tmin: float, tmax: float, k: Callable[[]
         b2 = (c - h2dgi) @ u[1:-1, i].T
         u[1:-1, i + 1] = np.linalg.solve(A, b1 + b2)
     return x, t, u
+
+# class ADRSolver(nn.Module):
+#     def __init__(self,
+#                  xmin: Number = 0, 
+#                  xmax: Number = 1, 
+#                  tmin: Number = 0, 
+#                  tmax: Number = 1,
+#                  Nx: int = 101,  
+#                  Nt: int = 101):
+#         super().__init__()
+#         self._xmin = xmin
+#         self._xmax = xmax
+#         self._tmin = tmin
+#         self._tmax = tmax
+#         self._Nx = Nx
+#         self._Nt = Nt
+        
+#         self.D1 = torch.eye(Nx, m=1) - torch.eye(Nx, m=-1)
+#         self.D2 = -2 * torch.eye(Nx) + torch.eye(Nx, m=-1) + torch.eye(Nx, m=1)
+#         self.D3 = torch.eye(Nx - 2)
+        
+#         self.register_buffer("xgrid", torch.linspace(xmin, xmax, Nx))
+#         self.register_buffer("tgrid", torch.linspace(tmin, tmax, Nt))
+        
+#         self.dx = (xmax - xmin) / (Nx - 1)
+#         self.dt = (tmax - tmin) / (Nt - 1)
+#         self.grid = torch.stack(torch.meshgrid(self.xgrid, self.tgrid, indexing="ij")).permute([1,2,0]).numpy()
+        
+        
+#     @torch.no_grad()
+#     def forward(self,
+#                 kx: Callable[[Tensor],Tensor], 
+#                 vx: Callable[[Tensor],Tensor], 
+#                 gu: Callable[[Tensor],Tensor], 
+#                 dgu: Callable[[Tensor],Tensor], 
+#                 f: Tensor,
+#                 u0: Callable[[Tensor],Tensor]
+#                  ) -> tuple[np.ndarray, np.ndarray]:
+#         k = kx(self.xgrid)
+#         v = vx(self.xgrid)
+#         M = -torch.diag(self.D1 @ k) @ self.D1 - 4 * torch.diag(k) @ self.D2
+#         Mbond = 8 * self.dx ** 2 / self.dt * self.D3 + M[1:, 1:]
+#         Vbond = 2 * self.dx * torch.diag(v[1:]) @ self.D1[1:, 1:] + 2 * self.dx * torch.diag(v[2:] - v[: self._Nx - 2])
+#         MVbond = Mbond + Vbond
+#         C = 8 * self.dx ** 2 / self.dt * self.D3 - M[1:, 1:] - Vbond
+#         u = torch.empty(f.shape[0], self._Nx, self._Nt, dtype = self.xgrid.dtype, device = self.xgrid.device)
+#         u[..., 0] = u0(self.xgrid)
+#         for i in range(self._Nt - 1):
+#             gui = gu(u[:, 1:, i])
+#             dgui = dgu(u[:, 1:, i])
+#             A = MVbond - torch.diag(4 * self.dx ** 2 * dgui)
+#             b1 = 8 * self.dx ** 2 * (0.5 * f[1:, i] + 0.5 * f[:, 1:, i + 1] + gui)
+#             b2 = (C - torch.diag(4 * self.dx ** 2 * dgui)) @ u[1:, i].T
+#             u[1:, i + 1] = torch.linalg.solve(A, b1 + b2)
+            
 
 class CVCSolver(nn.Module):
     def __init__(self, xmin: float = 0, xmax: float = 1, tmin: float = 0, tmax: float = 1, Nx: int = 101, Nt: int = 101, upsample: int = 5):

@@ -1,7 +1,11 @@
+from numbers import Number
+from numpy.typing import NDArray
 import numpy as np
 import torch
+import deepxde.deepxde as dde
 from torch import nn, Tensor
 from torch.nn import functional as F
+from deepxde.deepxde.data.function_spaces import FunctionSpace
 import matplotlib.pyplot as plt
 
 def H1norm(array: np.ndarray):
@@ -163,3 +167,74 @@ def interp_nd(grid: torch.Tensor,
         grid = grid.squeeze(int(is_batched))
     
     return grid
+
+class RFF(FunctionSpace):
+    def __init__(self, N = 200, mu: Number = 0, sigma: Number = 1):
+        self._N = N
+        self._mu = mu
+        self._sigma = sigma
+    
+    def random(self, size: int) -> NDArray[np.float_]:
+        """Generate random features for RFF
+
+        Args:
+            size (int): batch size
+
+        Returns:
+            NDArray[np.float_]: a feature array with shape: (B, 2, N)
+        """
+        freq = np.random.randn(size, self._N) * self._sigma + self._mu
+        phase = np.random.rand(size, self._N) * 2 * np.pi
+        return np.stack([freq, phase], axis = 1)
+    
+    def eval_one(self, feature: NDArray, x: NDArray) -> NDArray[np.float_]:
+        """Evaluate the value of a function
+
+        Args:
+            feature (_type_): (1, 2, N)
+            x (_type_): (1, M) | (M)
+            
+        Returns:
+            NDArray[np.float_]: a feature array with shape: (1, M)
+        """
+        if len(x.shape) == 1:
+            x = x[None, :]
+        phase = np.einsum("ij,ik->ijk", feature[:, 0], x) + feature[:, 1][..., None]
+        return np.cos(phase).sum(axis = 1) * np.sqrt(2 / self._N)
+    
+    def eval_batch(self, features: NDArray, xs: NDArray) -> NDArray[np.float_]:
+        """Evaluate the value of functions
+
+        Args:
+            features (NDArray): (B, 2, N)
+            xs (NDArray): (B, M) | (1, M) | (M)
+
+        Returns:
+            NDArray[np.float_]: a feature array with shape: (B, M)
+        """
+        if len(xs.shape) == 1:
+            xs = xs[None, :]
+        if xs.shape[0] == 1:
+            xs = np.repeat(xs, features.shape[0], axis = 0)
+        phase = np.einsum("ij,ik->ijk", features[:, 0], xs) + features[:, 1][..., None]
+        return np.cos(phase).sum(axis = 1) * np.sqrt(2 / self._N)
+
+class RFFCHE(FunctionSpace):
+    def __init__(self, N_RFF = 100, N_chebyshev = 10, mu: Number = 0, sigma: Number = 1):
+        self._N_RFF = N_RFF
+        self._N_chebyshev = N_chebyshev
+        self._mu = mu
+        self._sigma = sigma
+        self.RFF = RFF(N_RFF, mu, sigma)
+        self.CHE = dde.data.function_spaces.Chebyshev(N_chebyshev)
+
+    def random(self, size):
+        return self.RFF.random(size), self.CHE.random(size)
+    
+    def eval_one(self, feature, x):
+        return (self.RFF.eval_one(feature[0], x) + self.CHE.eval_one(feature[1], x)) / 2
+        
+    def eval_batch(self, features, xs):
+        return (self.RFF.eval_batch(features[0], xs) + self.CHE.eval_batch(features[1], xs)) / 2
+    
+    
