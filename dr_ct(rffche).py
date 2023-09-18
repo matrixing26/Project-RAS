@@ -26,11 +26,11 @@ test_num = 100
 test_points = 20000
 test_select_num = 1
 
-train_name = "datasets/DF/TRAIN_50_0.10_101_101.npz"
-test_name = "datasets/DF/TEST_50_0.10_101_101.npz"
-pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
-modelsave_path = f"results/DF/random_{date}.pth"
-csv_path = f"results/DF/random_{date}.csv"
+train_name = "datasets/DF/TRAIN_50_RC1010_101_101.npz"
+test_name = "datasets/DF/TEST_1000_RC1010_101_101.npz"
+pretrain_path = "datasets/DF/PRETRAIN_50_RC1010_20230917-23-53-50.pth"
+modelsave_path = f"results/DF/ct_{date}.pth"
+csv_path = f"results/DF/ct_{date}.csv"
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -109,61 +109,65 @@ geomtime = dde.geometry.GeometryXTime(geom, timedomain)
 func_space = RFFCHE(sigma = 1/ls)
 
 # %%
-# generate some vxs to test
-pde_data = dde.data.TimePDE(geomtime, 
-                            DF, 
-                            [], 
-                            num_domain = test_points)
+while len(train_vxs) < total_num:
+    # generate some vxs to test
+    pde_data = dde.data.TimePDE(geomtime, 
+                                DF, 
+                                [], 
+                                num_domain = test_points)
+    
+    eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
+    testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, 1, [0])
+    (vxs, grid), _, auxs = testing_new_data.train_next_batch()
+    outs = []
+    for vx, aux in zip(vxs, auxs):
+        aux = aux[:, None]
+        vx = vx[None, :].repeat(test_points, axis = 0)
+        out = model.predict((vx, grid), 
+                            aux_vars = aux, 
+                            operator = DF, 
+                            batch_size= test_points)
+        outs.append(out[:, 0])
+    outs = np.asarray(outs)
+    res = np.mean(outs, axis = 1)
+    print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
+    
+    topk_index = [0]
+    topk_vxs = vxs[topk_index]
+    uxts = parallel_solver(diffusion_reaction_solver, topk_vxs, num_workers = 0)
+    uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
 
-eval_pts = np.linspace(0, 1, 101)[:, None] # generate 1000 random vxs
-testing_new_data = dde.data.PDEOperatorCartesianProd(pde_data, func_space, eval_pts, total_num - len(train_vxs), [0])
-(vxs, grid), _, auxs = testing_new_data.train_next_batch()
-outs = []
-for vx, aux in zip(vxs, auxs):
-    aux = aux[:, None]
-    vx = vx[None, :].repeat(test_points, axis = 0)
-    out = model.predict((vx, grid), 
-                        aux_vars = aux, 
-                        operator = DF, 
-                        batch_size= test_points)
-    outs.append(out[:, 0])
-outs = np.asarray(outs)
-res = np.mean(outs, axis = 1)
-print(f"PDE residuals: {res.mean():.2e}, Std: {res.std():.2e}")
-
-uxts = parallel_solver(diffusion_reaction_solver, vxs, num_workers = 0)
-uxts = np.asarray([u for grid, u in uxts]).reshape(-1, 101 * 101)
-
-# then add the new data to the training set, and train the model
-train_vxs = np.concatenate([train_vxs, vxs], axis = 0)
-train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
-
-print(f"Train with: {len(train_vxs)} data")
-data = PDETriple(X_train=(train_vxs, train_grid), 
-                    y_train=train_uxts, 
-                    X_test=(test_vxs, test_grid), 
-                    y_test=test_uxts, 
-                    boundary = [])
-
-model = dde.Model(data, net)
-
-model.compile("adam", 
-                lr = lr, 
-                metrics = ["l2 relative error"],
-                decay = decay,)
-
-losshistory, train_state = model.train(iterations= 100000, batch_size = batchsize)
-
-pd_frame = losshistory.to_pandas()
-os.makedirs("results/DF", exist_ok=True)
-if os.path.exists(csv_path):
-    pd_frame = pd.concat([pd.read_csv(csv_path), pd_frame], axis = 0, ignore_index=True)
-pd_frame.to_csv(csv_path, index=False)
-
-if len(train_vxs) % 10 == 0:
-    dde.utils.plot_loss_history(losshistory)
-    plotdata(0, "train")
-    plotdata(0, "test")
-    plt.show()
+    # then add the new data to the training set, and train the model
+    train_vxs = np.concatenate([train_vxs, topk_vxs], axis = 0)
+    train_uxts = np.concatenate([train_uxts, uxts], axis = 0)
+    
+    print(f"Train with: {len(train_vxs)} data")
+    data = PDETriple(X_train=(train_vxs, train_grid), 
+                     y_train=train_uxts, 
+                     X_test=(test_vxs, test_grid), 
+                     y_test=test_uxts, 
+                     boundary = [])
+    
+    model = dde.Model(data, net)
+    
+    model.compile("adam", 
+                  lr = lr, 
+                  metrics = ["l2 relative error"],
+                  decay = decay,)
+    
+    losshistory, train_state = model.train(iterations=iters if len(train_vxs) % 10 == 0 else 1000, 
+                                           batch_size = batchsize)
+    
+    pd_frame = losshistory.to_pandas()
+    os.makedirs("results/DF", exist_ok=True)
+    if os.path.exists(csv_path):
+        pd_frame = pd.concat([pd.read_csv(csv_path), pd_frame], axis = 0, ignore_index=True)
+    pd_frame.to_csv(csv_path, index=False)
+    
+    if len(train_vxs) % 10 == 0:
+        dde.utils.plot_loss_history(losshistory)
+        plotdata(0, "train")
+        plotdata(0, "test")
+        plt.show()
 
 torch.save(model.state_dict(), modelsave_path)

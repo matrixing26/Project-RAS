@@ -198,8 +198,8 @@ class RFF(FunctionSpace):
             NDArray[np.float_]: a feature array with shape: (1, M)
         """
         if len(x.shape) == 1:
-            x = x[None, :]
-        phase = np.einsum("ij,ik->ijk", feature[:, 0], x) + feature[:, 1][..., None]
+            x = x[:, None]
+        phase = np.einsum("ij,kr->ijk", feature[:, 0], x) + feature[:, 1][..., None]
         return np.cos(phase).sum(axis = 1) * np.sqrt(2 / self._N)
     
     def eval_batch(self, features: NDArray, xs: NDArray) -> NDArray[np.float_]:
@@ -213,10 +213,8 @@ class RFF(FunctionSpace):
             NDArray[np.float_]: a feature array with shape: (B, M)
         """
         if len(xs.shape) == 1:
-            xs = xs[None, :]
-        if xs.shape[0] == 1:
-            xs = np.repeat(xs, features.shape[0], axis = 0)
-        phase = np.einsum("ij,ik->ijk", features[:, 0], xs) + features[:, 1][..., None]
+            xs = xs[:, None]
+        phase = np.einsum("ij,kr->ijk", features[:, 0], xs) + features[:, 1][..., None]
         return np.cos(phase).sum(axis = 1) * np.sqrt(2 / self._N)
 
 class RFFCHE(FunctionSpace):

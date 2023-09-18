@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 from datasets import parallel_solver, diffusion_reaction_solver
-from utils.func import plot_data
+from utils.func import plot_data, RFFCHE
 from utils.PDETriple import PDETriple
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
@@ -28,7 +28,7 @@ test_select_num = 1
 
 train_name = "datasets/DF/TRAIN_50_RC1010_101_101.npz"
 test_name = "datasets/DF/TEST_1000_RC1010_101_101.npz"
-pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
+pretrain_path = "datasets/DF/PRETRAIN_50_RC1010_20230917-23-53-50.pth"
 modelsave_path = f"results/DF/rasg_{date}.pth"
 csv_path = f"results/DF/rasg_{date}.csv"
 
@@ -106,7 +106,7 @@ plotdata(0, "test")
 geom = dde.geometry.Interval(0, 1)
 timedomain = dde.geometry.TimeDomain(0, 1)
 geomtime = dde.geometry.GeometryXTime(geom, timedomain)
-func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
+func_space = RFFCHE(sigma = 1/ls)
 
 # %%
 while len(train_vxs) < total_num:
