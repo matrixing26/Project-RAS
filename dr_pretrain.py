@@ -4,7 +4,7 @@ import time
 import torch
 from torch import Tensor
 import os
-from utils.func import RFFCHE
+from utils.func import COS
 import deepxde.deepxde as dde
 from datasets.solver import diffusion_reaction_solver
 from utils.PDETriple import PDETriple
@@ -22,14 +22,21 @@ size = 50
 # train_name = f"datasets/DF/TRAIN_{size}_{ls:.2f}_101_101.npz"
 # test_name = f"datasets/DF/TEST_1000_{ls:.2f}_101_101.npz"
 # save_pth = f"datasets/DF/PRETRAIN_{size}_{ls:.2f}_{date}.pth"
-train_name = f"datasets/DF/TRAIN_{size}_RC1010_101_101.npz"
-test_name = f"datasets/DF/TEST_1000_RC1010_101_101.npz"
-save_pth = f"datasets/DF/PRETRAIN_{size}_RC1010_{date}.pth"
+# train_name = f"datasets/DF/TRAIN_{size}_RC1010_101_101.npz"
+# test_name = f"datasets/DF/TEST_1000_RC1010_101_101.npz"
+# save_pth = f"datasets/DF/PRETRAIN_{size}_RC1010_{date}.pth"
+# train_name = f"datasets/DF/TRAIN_{size}_COS.npz" # N = 20
+# test_name = f"datasets/DF/TEST_1000_COS.npz"
+# save_pth = f"datasets/DF/PRETRAIN_{size}_COS_{date}.pth"
+train_name = f"datasets/DF/TRAIN_{size}_POLY.npz" # N = 10
+test_name = f"datasets/DF/TEST_1000_POLY.npz"
+save_pth = f"datasets/DF/PRETRAIN_{size}_POLY_{date}.pth"
 
 os.makedirs("datasets/DF", exist_ok = True)
 
-func_space = RFFCHE(100, 10, 0, 1/ls)
 # func_space = dde.data.function_spaces.GRF(length_scale = ls)
+# func_space = RFFCHE(100, 10, 0, 1/ls)
+func_space = dde.data.function_spaces.Chebyshev(N = 10)
 
 if not os.path.exists(train_name):
     vxs = []

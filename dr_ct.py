@@ -74,7 +74,7 @@ test_vxs = test_data["vxs"]
 test_grid = test_data["xt"].reshape(-1, 2)
 test_uxts = test_data["uxts"].reshape(-1, 101 * 101)
 del test_data
-print(test_vxs.shape, train_grid.shape, train_uxts.shape)
+print(train_vxs.shape, train_grid.shape, train_uxts.shape)
 print(test_vxs.shape, test_grid.shape, test_uxts.shape)
 
 # %%

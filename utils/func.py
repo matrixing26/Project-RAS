@@ -217,6 +217,39 @@ class RFF(FunctionSpace):
         phase = np.einsum("ij,kr->ijk", features[:, 0], xs) + features[:, 1][..., None]
         return np.cos(phase).sum(axis = 1) * np.sqrt(2 / self._N)
 
+class COS(FunctionSpace):
+    def __init__(self, N = 20):
+        self._N = N
+    
+    def random(self, size: int) -> NDArray[np.float_]:
+        coeff = np.random.randn(size, self._N)
+        phase = np.random.rand(size, self._N) * 2 * np.pi
+        return np.stack([coeff, phase], axis = 0) # 2, S, N
+
+    def eval_one(self, feature: NDArray, x: NDArray) -> NDArray[np.float_]:
+        if len(x.shape) == 1:
+            x = x[:, None]
+            # G, 1
+        coeff, phi = feature[0], feature[1] # S, N
+        freq = np.arange(1, self._N + 1)
+        phase = np.einsum("i,jk->ij", freq, x) # N, G
+        phase = phase[None, ...] + phi[..., None] # S, N, G
+        phase = np.cos(phase) # S, N, G
+        phase = phase * coeff[..., None] # (S, N, G)
+        return phase.sum(axis = 1) * np.sqrt(2 / self._N)
+    
+    def eval_batch(self, features: NDArray, xs: NDArray) -> NDArray[np.float_]:
+        if len(xs.shape) == 1:
+            xs = xs[:, None]
+            # G, 1
+        coeff, phi = features[0], features[1] # S, N
+        freq = np.arange(1, self._N + 1)
+        phase = np.einsum("i,jk->ij", freq, xs) # N, G
+        phase = phase[None, ...] + phi[..., None] # S, N, G
+        phase = np.cos(phase) # S, N, G
+        phase = phase * coeff[..., None] # (S, N, G)
+        return phase.sum(axis = 1) * np.sqrt(2 / self._N)
+
 class RFFCHE(FunctionSpace):
     def __init__(self, N_RFF = 100, N_chebyshev = 10, mu: Number = 0, sigma: Number = 1):
         self._N_RFF = N_RFF
