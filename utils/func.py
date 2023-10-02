@@ -1,6 +1,7 @@
 from numbers import Number
 from numpy.typing import NDArray
 import numpy as np
+import random
 import torch
 import deepxde.deepxde as dde
 from torch import nn, Tensor
@@ -231,19 +232,19 @@ class COS(FunctionSpace):
             x = x[:, None]
             # G, 1
         coeff, phi = feature[0], feature[1] # S, N
-        freq = np.arange(1, self._N + 1)
+        freq = np.arange(1, self._N + 1) * 2 * np.pi
         phase = np.einsum("i,jk->ij", freq, x) # N, G
         phase = phase[None, ...] + phi[..., None] # S, N, G
         phase = np.cos(phase) # S, N, G
         phase = phase * coeff[..., None] # (S, N, G)
-        return phase.sum(axis = 1) * np.sqrt(2 / self._N)
+        return phase.sum(axis = 1)
     
     def eval_batch(self, features: NDArray, xs: NDArray) -> NDArray[np.float_]:
         if len(xs.shape) == 1:
             xs = xs[:, None]
             # G, 1
         coeff, phi = features[0], features[1] # S, N
-        freq = np.arange(1, self._N + 1)
+        freq = np.arange(1, self._N + 1) * 2 * np.pi
         phase = np.einsum("i,jk->ij", freq, xs) # N, G
         phase = phase[None, ...] + phi[..., None] # S, N, G
         phase = np.cos(phase) # S, N, G
@@ -268,4 +269,38 @@ class RFFCHE(FunctionSpace):
     def eval_batch(self, features, xs):
         return (self.RFF.eval_batch(features[0], xs) + self.CHE.eval_batch(features[1], xs)) / 2
     
+class UnionSpace(FunctionSpace):
+    def __init__(self, space1, space2):
+        self.space1 = space1
+        self.space2 = space2
     
+    def random(self, size):
+        s1 = s2 = size // 2
+        if size % 2 != 0:
+            if random.randbytes(1):
+                s1 += 1
+            else:
+                s2 += 1
+        fea1 = self.space1.random(s1) if s1 > 0 else None
+        fea2 = self.space2.random(s2) if s2 > 0 else None
+        return (fea1, fea2)
+    
+    def eval_one(self, feature, x):
+        func1 = self.space1.eval_one(feature[0], x) if feature[0] is not None else None
+        func2 = self.space2.eval_one(feature[1], x) if feature[1] is not None else None
+        if func1 is None:
+            return func2
+        elif func2 is None:
+            return func1
+        else:
+            return np.cat([func1, func2], axis = 0)
+    
+    def eval_batch(self, features, xs):
+        func1 = self.space1.eval_batch(features[0], xs) if features[0] is not None else None
+        func2 = self.space2.eval_batch(features[1], xs) if features[1] is not None else None
+        if func1 is None:
+            return func2
+        elif func2 is None:
+            return func1
+        else:
+            return np.concatenate([func1, func2], axis = 0)

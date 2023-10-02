@@ -9,7 +9,8 @@ import torch
 from torch import Tensor
 
 from datasets import parallel_solver, diffusion_reaction_solver
-from utils.func import plot_data
+from utils.func import plot_data, COS
+from deepxde.deepxde.data.function_spaces import Chebyshev, GRF
 from utils.PDETriple import PDETriple
 
 date = time.strftime("%Y%m%d-%H-%M-%S", time.localtime())
@@ -21,16 +22,18 @@ decay = None
 iters = 10000
 ls = 0.1
 lr = 1e-3
-total_num = 200
+total_num = 250
 test_num = 100
 test_points = 20000
 test_select_num = 1
 
-train_name = "datasets/DF/TRAIN_50_0.10_101_101.npz"
-test_name = "datasets/DF/TEST_50_0.10_101_101.npz"
-pretrain_path = "datasets/DF/PRETRAIN_50_0.10_20230824-11-45-48.pth"
-modelsave_path = f"results/DF/rasg_{date}.pth"
-csv_path = f"results/DF/rasg_{date}.csv"
+func_space = Chebyshev(10)
+sp_name = type(func_space).__name__
+train_name = "datasets/DF/TRAIN_50_{sp_name}.npz"
+test_name = "datasets/DF/TEST_1000_{sp_name}.npz"
+pretrain_path = "datasets/DF/PRETRAIN_50_POLY_20230921-23-33-35.pth"
+modelsave_path = f"results/DF/rasg_poly_{date}.pth"
+csv_path = f"results/DF/rasg_poly_{date}.csv"
 
 # %%
 def dirichlet(inputs: Tensor, outputs: Tensor) -> Tensor:
@@ -106,10 +109,13 @@ plotdata(0, "test")
 geom = dde.geometry.Interval(0, 1)
 timedomain = dde.geometry.TimeDomain(0, 1)
 geomtime = dde.geometry.GeometryXTime(geom, timedomain)
-func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
+func_space = dde.data.function_spaces.Chebyshev(10)
+# func_space = dde.data.GRF(1.0, length_scale = ls, N= 1000, interp="linear")
+# func_space = COS(N = 20)
 
 # %%
 while len(train_vxs) < total_num:
+    print(torch.cuda.memory_summary())
     # generate some vxs to test
     pde_data = dde.data.TimePDE(geomtime, 
                                 DF, 
