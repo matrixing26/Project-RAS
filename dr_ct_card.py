@@ -16,7 +16,7 @@ from utils.func import COS, UnionSpace
 from deepxde.deepxde.data.function_spaces import Chebyshev
 from deepxde.deepxde.data.function_spaces import GRF
 
-date = time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())
+date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 # dde.config.set_random_seed(2023)
 
 # %%
