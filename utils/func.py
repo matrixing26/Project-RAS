@@ -224,7 +224,7 @@ class COS(FunctionSpace):
     
     def random(self, size: int) -> NDArray[np.float_]:
         coeff = np.random.randn(size, self._N)
-        phase = np.random.rand(size, self._N) * 2 * np.pi
+        phase = np.random.rand(size, self._N)
         return np.stack([coeff, phase], axis = 0) # 2, S, N
 
     def eval_one(self, feature: NDArray, x: NDArray) -> NDArray[np.float_]:
@@ -232,7 +232,7 @@ class COS(FunctionSpace):
             x = x[:, None]
             # G, 1
         coeff, phi = feature[0], feature[1] # S, N
-        freq = np.arange(1, self._N + 1) * 2 * np.pi
+        freq = np.arange(0, self._N + 1)
         phase = np.einsum("i,jk->ij", freq, x) # N, G
         phase = phase[None, ...] + phi[..., None] # S, N, G
         phase = np.cos(phase) # S, N, G
@@ -244,7 +244,7 @@ class COS(FunctionSpace):
             xs = xs[:, None]
             # G, 1
         coeff, phi = features[0], features[1] # S, N
-        freq = np.arange(1, self._N + 1) * 2 * np.pi
+        freq = np.arange(1, self._N + 1)
         phase = np.einsum("i,jk->ij", freq, xs) # N, G
         phase = phase[None, ...] + phi[..., None] # S, N, G
         phase = np.cos(phase) # S, N, G
@@ -275,9 +275,10 @@ class UnionSpace(FunctionSpace):
         self.space2 = space2
     
     def random(self, size):
-        s1 = s2 = size // 2
+        s1 = size // 2
+        s2 = size // 2
         if size % 2 != 0:
-            if random.randbytes(1):
+            if random.getrandbits(1):
                 s1 += 1
             else:
                 s2 += 1

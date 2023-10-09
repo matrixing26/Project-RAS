@@ -31,9 +31,8 @@ test_points = 20000
 test_select_num = 1
 show = False
 
-for func_space, sp_name in zip(
-    [Chebyshev(10), COS(4), GRF(1, "RBF", 0.1), UnionSpace(COS(4), Chebyshev(10)), UnionSpace(GRF(1, "RBF", 0.1), Chebyshev(10))], 
-    ["Chebyshev", "COS", "GRF", "COS+Chebyshev","GRF+Chebyshev"]):
+for func_space, sp_name in zip([COS(20), UnionSpace(COS(20), Chebyshev(10)), UnionSpace(GRF(1, "RBF", 0.1), Chebyshev(10))], 
+    ["COS","COS+Chebyshev","GRF+Chebyshev"]):
     train_name = f"datasets/DF/TRAIN_50_{sp_name}.npz"
     test_name = f"datasets/DF/TEST_1000_{sp_name}.npz"
     pretrain_path = f"datasets/DF/PRETRAIN_50_{sp_name}.pth"

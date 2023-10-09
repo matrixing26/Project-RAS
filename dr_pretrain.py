@@ -20,8 +20,8 @@ iter = 20000
 ls = 0.1
 lr = 1e-3
 size = 50
-
-for func_space, sp_name in zip([Chebyshev(10), COS(4), GRF(1, "RBF", 0.1), UnionSpace(COS(4), Chebyshev(10)), UnionSpace(GRF(1, "RBF", 0.1), Chebyshev(10))], ["Chebyshev", "COS", "GRF", "COS+Chebyshev","GRF+Chebyshev"]):
+#for func_space, sp_name in zip([Chebyshev(10), COS(4), GRF(1, "RBF", 0.1), UnionSpace(COS(4), Chebyshev(10)), UnionSpace(GRF(1, "RBF", 0.1), Chebyshev(10))], ["Chebyshev", "COS", "GRF", "COS+Chebyshev","GRF+Chebyshev"]):
+for func_space, sp_name in zip([COS(20), UnionSpace(COS(20), Chebyshev(10)), UnionSpace(GRF(1, "RBF", 0.1), Chebyshev(10))], ["COS", "COS+Chebyshev","GRF+Chebyshev"]):
     train_name = f"datasets/DF/TRAIN_50_{sp_name}.npz"
     test_name = f"datasets/DF/TEST_1000_{sp_name}.npz"
     save_pth = f"datasets/DF/PRETRAIN_{size}_{sp_name}.pth"
