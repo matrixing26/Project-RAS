@@ -1,7 +1,10 @@
 *.npz
+*.pth
 results/*
-datasets/DF/*
+legacy/dataset
+outputs
 
+._*
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

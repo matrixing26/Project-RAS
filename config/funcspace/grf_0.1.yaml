@@ -1,0 +1,3 @@
+name: "GRF"
+params:
+  length_scale: 0.1

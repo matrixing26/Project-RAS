@@ -1,0 +1,52 @@
+model:
+  name: DeepONet
+  params:
+    layer_sizes_branch: [101, 100, 100]
+    layer_sizes_trunk: [2, 100, 100, 100]
+    activation: gelu
+    kernel_initializer: Glorot normal
+
+  input_transform: ~
+  
+  output_transform:
+    name: dirichlet_Deeponet
+    params:
+      scale_factor: 10
+
+train:
+  batch_size: 10000
+  iters: 10000
+  max_save: 1
+  init_train_size: 50
+  final_train_size: 250
+  test_size: 1000
+  test_point: 20000
+
+active:
+  mode: RASG-L1 # random
+  iters: 100
+  funcs: 100
+  select: 1
+
+pde:
+  name: diffusion_reaction
+  params:
+    D: 0.01
+    k: 0.01
+
+solver:
+  name: diffusion_reaction_solver
+  params:
+    xmax: 1.0
+    tmax: 1.0
+    D: ${pde.pde.params.D}
+    k: ${pde.pde.params.k}
+    Nx: 101
+    Nt: 101
+  
+datasets:
+  workdir: ./data/dr
+  pretrain_path: f"${pde.datasets.workdir}/{utils.get_space_name(space)}_${pde.train.init_train_size}.pth"
+  train_path: f"${pde.datasets.workdir}/{utils.get_space_name(space)}_${pde.train.init_train_size}_t.npz"
+  test_path: f"${pde.datasets.workdir}/{utils.get_space_name(space)}_${pde.train.test_size}_v.npz"
+  

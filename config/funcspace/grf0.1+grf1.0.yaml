@@ -1,0 +1,8 @@
+name: "UnionSpace"
+params:
+  - name: "GRF"
+    params:
+      length_scale: 0.1
+  - name: "GRF"
+    params:
+      length_scale: 1.0

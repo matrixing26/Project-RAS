@@ -1,0 +1,9 @@
+name: "UnionSpace"
+params:
+  - name: "GRF"
+    params:
+      length_scale: 0.1
+  - name: "Chebyshev"
+    params:
+      N: 10
+      M: 1
